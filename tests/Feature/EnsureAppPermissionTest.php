@@ -2,18 +2,57 @@
 
 use App\Models\User;
 use App\Services\Contracts\RbacServiceContract;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\Middleware\InjectClaims;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Config::set('cache.default', 'array');
     Config::set('permission.cache.store', 'array');
 
+    app('router')->aliasMiddleware('inject.claims', InjectClaims::class);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 });
 
-it('allows access when user has application permission', function () {
+function registerSecureRoute(string $uri, array $middleware): void
+{
+    Route::middleware($middleware)
+        ->get($uri, fn () => response()->json(['ok' => true]));
+}
+
+it('allows_request_when_claims_contain_permission', function () {
+    makeIamApplication('siimut');
+    $user = User::factory()->create();
+
+    registerSecureRoute('/testing/claims-allowed', [
+        'inject.claims:siimut.indicator.view',
+        'ensure.app.permission:siimut,siimut.indicator.view',
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/testing/claims-allowed')
+        ->assertOk();
+});
+
+it('denies_request_when_claims_missing_permission', function () {
+    makeIamApplication('siimut');
+    $user = User::factory()->create();
+
+    registerSecureRoute('/testing/claims-denied', [
+        'inject.claims:',
+        'ensure.app.permission:siimut,siimut.indicator.view',
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/testing/claims-denied')
+        ->assertForbidden();
+});
+
+it('falls_back_to_rbac_service_when_no_claims_present', function () {
     $application = makeIamApplication('siimut');
     $user = User::factory()->create();
     $role = makeIamRole($application, 'admin');
@@ -24,23 +63,23 @@ it('allows access when user has application permission', function () {
     $rbac->assignRole($user, $role->name, $application);
     $rbac->syncPermissions($role, [$permission], $application);
 
-    Route::middleware('app.permission:siimut,siimut.indicator.view')
-        ->get('/test-permission-allowed', fn () => response()->json(['ok' => true]));
+    registerSecureRoute('/testing/rbac-fallback', [
+        'ensure.app.permission:siimut,siimut.indicator.view',
+    ]);
 
     $this->actingAs($user)
-        ->getJson('/test-permission-allowed')
-        ->assertOk()
-        ->assertJson(['ok' => true]);
+        ->getJson('/testing/rbac-fallback')
+        ->assertOk();
 });
 
-it('forbids access when user lacks permission', function () {
-    makeIamApplication('siimut');
+it('handles_nonexistent_application_key', function () {
     $user = User::factory()->create();
 
-    Route::middleware('app.permission:siimut,siimut.indicator.view')
-        ->get('/test-permission-denied', fn () => response()->json(['ok' => true]));
+    registerSecureRoute('/testing/missing-app', [
+        'ensure.app.permission:unknown,unknown.permission',
+    ]);
 
     $this->actingAs($user)
-        ->getJson('/test-permission-denied')
-        ->assertForbidden();
+        ->getJson('/testing/missing-app')
+        ->assertNotFound();
 });

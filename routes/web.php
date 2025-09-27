@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UserInfoController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,3 +16,11 @@ Route::get('/', function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+
+if (app()->environment('testing')) {
+    require __DIR__.'/testing.php';
+}
+
+Route::middleware('auth')
+    ->get('/oauth/userinfo', UserInfoController::class)
+    ->name('oauth.userinfo');

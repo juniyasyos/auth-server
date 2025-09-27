@@ -23,6 +23,13 @@ uses()
         config(['vite.hot' => null]);
     });
 
+dataset('iam-user-app', function () {
+    $application = makeIamApplication('siimut');
+    $user = App\Models\User::factory()->create();
+
+    return [$user, $application];
+});
+
 /*
 |--------------------------------------------------------------------------
 | Expectations
@@ -48,8 +55,3 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-function something()
-{
-    // ..
-}

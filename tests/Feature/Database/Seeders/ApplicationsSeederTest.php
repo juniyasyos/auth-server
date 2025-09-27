@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+
+uses(RefreshDatabase::class);
+
+it('seeds_default_applications', function () {
+    Artisan::call('db:seed', ['--class' => Database\Seeders\ApplicationsSeeder::class]);
+
+    $apps = \App\Models\Application::pluck('enabled', 'app_key');
+
+    expect($apps->keys())->toContain('siimut')->toContain('tamasuma');
+    expect($apps['siimut'])->toBeTrue();
+    expect($apps['tamasuma'])->toBeTrue();
+});
+
+it('applications_seeder_is_idempotent', function () {
+    Artisan::call('db:seed', ['--class' => Database\Seeders\ApplicationsSeeder::class]);
+    Artisan::call('db:seed', ['--class' => Database\Seeders\ApplicationsSeeder::class]);
+
+    expect(\App\Models\Application::count())->toBe(2);
+});
