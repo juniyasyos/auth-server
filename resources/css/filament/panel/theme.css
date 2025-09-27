@@ -92,6 +92,27 @@
     /* soft blue-slate surface */
 }
 
+/* 1) samakan tinggi topbar sebagai variabel (pakai skala yang sudah kamu pakai) */
+:root {
+    --fi-topbar-h: clamp(3rem, 2.3rem + 1.2vw, 4rem);
+}
+
+/* 2) sidebar “nempel” di bawah topbar dan scroll sendiri */
+.fi-panel-panel .fi-sidebar {
+    position: sticky;
+    top: var(--fi-topbar-h);
+    height: calc(100vh - var(--fi-topbar-h));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* biar scroll-nya nggak ‘nular’ ke body */
+}
+
+/* 3) kalau ada auto-scroll ke anchor/section, jangan ketutup topbar */
+html {
+    scroll-padding-top: var(--fi-topbar-h);
+}
+
+
 /* Base layout harmonization */
 html.fi,
 .fi-body {
@@ -216,9 +237,8 @@ html.fi,
 
 /* Scrollbar Start */
 ::-webkit-scrollbar {
-    /* @apply w-2 h-2 bg-gray-200 dark:bg-[var(--ds-dark-bg-primary-color)]; */
-    width: 0px;
-    height: 0px;
+    width: 0.5rem;
+    height: 0.5rem;
 }
 
 ::-webkit-scrollbar-track {

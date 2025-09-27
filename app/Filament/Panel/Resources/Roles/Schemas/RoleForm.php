@@ -3,7 +3,7 @@
 namespace App\Filament\Panel\Resources\Roles\Schemas;
 
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Get;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 
