@@ -3,13 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Services\Contracts\AppRegistryContract;
-use App\Services\Contracts\ClaimsBuilderContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserInfoController extends Controller
 {
-    public function __invoke(Request $request, ClaimsBuilderContract $claimsBuilder, AppRegistryContract $registry): JsonResponse
+    public function __invoke(Request $request, AppRegistryContract $registry): JsonResponse
     {
         $user = $request->user();
 
@@ -18,7 +17,16 @@ class UserInfoController extends Controller
             $application = $registry->getByKeyOrFail($request->query('app'));
         }
 
-        $claims = $claimsBuilder->build($user, $application);
+        $claims = [
+            'apps' => [],
+            'roles' => [],
+            'perms' => [],
+        ];
+
+        if ($application) {
+            $claims['application_id'] = $application->getKey();
+            $claims['app_key'] = $application->app_key;
+        }
 
         return response()->json([
             'sub' => (string) $user->getKey(),

@@ -15,7 +15,6 @@ class DatabaseSeeder extends Seeder
         // Seed predefined users
         $this->call([
             ApplicationsSeeder::class,
-            RolesPermissionsSeeder::class,
             UserSeeder::class,
         ]);
 

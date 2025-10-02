@@ -6,8 +6,6 @@ use App\Filament\Panel\Resources\Users\Pages\CreateUser;
 use App\Filament\Panel\Resources\Users\Pages\EditUser;
 use App\Filament\Panel\Resources\Users\Pages\ListUsers;
 use App\Filament\Panel\Resources\Users\Pages\ViewUser;
-use App\Filament\Panel\Resources\Users\RelationManagers\ApplicationsRelationManager;
-use App\Filament\Panel\Resources\Users\RelationManagers\RolesRelationManager;
 use App\Filament\Panel\Resources\Users\Schemas\UserForm;
 use App\Filament\Panel\Resources\Users\Schemas\UserInfolist;
 use App\Filament\Panel\Resources\Users\Tables\UsersTable;
@@ -51,10 +49,7 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RolesRelationManager::class,
-            ApplicationsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

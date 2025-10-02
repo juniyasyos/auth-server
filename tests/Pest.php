@@ -1,14 +1,12 @@
 <?php
 
-require_once __DIR__.'/Support/IamTestHelpers.php';
-
 /*
 |--------------------------------------------------------------------------
 | Test Case
 |--------------------------------------------------------------------------
 |
 | The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
+| case class. By default, that class is "PHPUnit\\Framework\\TestCase". Of course, you may
 | need to change it using the "pest()" function to bind a different classes or traits.
 |
 */
@@ -22,13 +20,6 @@ uses()
         config(['vite.manifest' => base_path('tests/Fixtures/manifest.json')]);
         config(['vite.hot' => null]);
     });
-
-dataset('iam-user-app', function () {
-    $application = makeIamApplication('siimut');
-    $user = App\Models\User::factory()->create();
-
-    return [$user, $application];
-});
 
 /*
 |--------------------------------------------------------------------------
