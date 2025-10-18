@@ -20,6 +20,13 @@ class ApplicationInfolist
                     ->columnSpanFull(),
                 IconEntry::make('enabled')
                     ->boolean(),
+                TextEntry::make('callback_url')
+                    ->label('Callback URL')
+                    ->placeholder('-'),
+                TextEntry::make('secret')
+                    ->label('SSO Secret')
+                    ->placeholder('-')
+                    ->copyable(),
                 TextEntry::make('logo_url')
                     ->placeholder('-'),
                 TextEntry::make('created_by')

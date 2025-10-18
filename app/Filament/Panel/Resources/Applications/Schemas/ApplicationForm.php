@@ -29,8 +29,22 @@ class ApplicationForm
                 TagsInput::make('redirect_uris')
                     ->label('Redirect URIs')
                     ->helperText('Optional. Press Enter to add multiple redirect URIs.')
-                    ->placeholder('https://app.example.com/oauth/callback')
+                    ->placeholder('http://127.0.0.1:8080/oauth/callback')
                     ->nullable()
+                    ->columnSpanFull(),
+                TextInput::make('callback_url')
+                    ->label('SSO Callback URL')
+                    ->required()
+                    ->url()
+                    ->maxLength(2048)
+                    ->columnSpanFull(),
+                TextInput::make('secret')
+                    ->label('SSO Shared Secret')
+                    ->password()
+                    ->revealable()
+                    ->nullable()
+                    ->maxLength(255)
+                    ->helperText('Provide the secret that partner applications will use when integrating with SSO.')
                     ->columnSpanFull(),
                 TextInput::make('logo_url')
                     ->label('Logo URL')

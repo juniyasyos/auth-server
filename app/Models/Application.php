@@ -22,6 +22,8 @@ class Application extends Model
         'description',
         'enabled',
         'redirect_uris',
+        'callback_url',
+        'secret',
         'logo_url',
         'created_by',
     ];
@@ -32,6 +34,13 @@ class Application extends Model
     protected $casts = [
         'redirect_uris' => 'array',
         'enabled' => 'boolean',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    protected $hidden = [
+        'secret',
     ];
 
     /**

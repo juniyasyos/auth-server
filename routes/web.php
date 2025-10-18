@@ -17,6 +17,12 @@ Route::get('/', function () {
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 
+$ssoRoutes = require __DIR__.'/sso.php';
+
+if (is_array($ssoRoutes) && isset($ssoRoutes['web']) && is_callable($ssoRoutes['web'])) {
+    $ssoRoutes['web']();
+}
+
 if (app()->environment('testing')) {
     require __DIR__.'/testing.php';
 }

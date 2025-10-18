@@ -18,6 +18,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->boolean('enabled')->default(true);
             $table->json('redirect_uris')->nullable();
+            $table->string('callback_url')->nullable();
+            $table->string('secret')->nullable();
             $table->string('logo_url')->nullable();
             $table->foreignId('created_by')
                 ->nullable()

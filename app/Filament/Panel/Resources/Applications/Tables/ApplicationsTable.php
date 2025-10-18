@@ -32,6 +32,10 @@ class ApplicationsTable
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('callback_url')
+                    ->label('Callback URL')
+                    ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('enabled')
                     ->boolean()
                     ->label('Enabled'),

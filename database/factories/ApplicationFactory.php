@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<\App\Models\Application>
@@ -21,6 +22,8 @@ class ApplicationFactory extends Factory
             'name' => $this->faker->unique()->company(),
             'description' => $this->faker->optional()->sentence(),
             'enabled' => true,
+            'callback_url' => sprintf('http://127.0.0.1:%d/callback', $this->faker->numberBetween(8000, 9000)),
+            'secret' => Str::random(40),
         ];
     }
 }
