@@ -19,5 +19,6 @@ it('applications_seeder_is_idempotent', function () {
     Artisan::call('db:seed', ['--class' => Database\Seeders\ApplicationsSeeder::class]);
     Artisan::call('db:seed', ['--class' => Database\Seeders\ApplicationsSeeder::class]);
 
-    expect(\App\Models\Application::count())->toBe(2);
+    // Seeder now creates 5 applications (client-example, siimut, tamasuma, incident-report.app, pharmacy.app)
+    expect(\App\Models\Application::count())->toBe(5);
 });

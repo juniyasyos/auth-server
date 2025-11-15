@@ -67,7 +67,7 @@ final class PanelTheme implements Plugin
     private string $databaseNotificationsPolling = '30s';
 
     // Global Search
-    private bool $globalSearch = true;
+    private bool $globalSearch = false;
     /** @var list<non-empty-string> */
     private array $globalSearchKeyBindings = ['cmd+k', 'ctrl+k'];
 

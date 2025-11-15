@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('callback_url')->nullable();
             $table->string('secret')->nullable();
             $table->string('logo_url')->nullable();
+            $table->integer('token_expiry')->nullable()->comment('Token expiry in seconds (default: 3600)');
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')

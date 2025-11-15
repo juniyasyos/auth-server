@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Domain\Iam\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class ApplicationRole extends Model
+{
+    use HasFactory;
+
+    /**
+     * The table associated with the model.
+     */
+    protected $table = 'iam_roles';
+
+    /**
+     * @var list<string>
+     */
+    protected $fillable = [
+        'application_id',
+        'slug',
+        'name',
+        'description',
+        'is_system',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_system' => 'boolean',
+    ];
+
+    /**
+     * Get the application this role belongs to.
+     */
+    public function application(): BelongsTo
+    {
+        return $this->belongsTo(Application::class);
+    }
+
+    /**
+     * Get all users that have this role.
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            \App\Models\User::class,
+            'user_application_roles',
+            'role_id',
+            'user_id'
+        )
+            ->withPivot('assigned_by')
+            ->withTimestamps();
+    }
+
+    /**
+     * Scope to find role by slug for a specific application.
+     */
+    public function scopeForApplication($query, int $applicationId)
+    {
+        return $query->where('application_id', $applicationId);
+    }
+
+    /**
+     * Scope to find role by slug.
+     */
+    public function scopeBySlug($query, string $slug)
+    {
+        return $query->where('slug', $slug);
+    }
+
+    /**
+     * Check if this is a protected system role.
+     */
+    public function isSystemRole(): bool
+    {
+        return $this->is_system === true;
+    }
+
+    /**
+     * Get role identifier as "app_key:slug".
+     */
+    public function getIdentifierAttribute(): string
+    {
+        return $this->application->app_key.':'.$this->slug;
+    }
+}

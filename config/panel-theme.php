@@ -75,7 +75,7 @@ return [
      * Global search configuration
      */
     'global_search' => [
-        'enabled' => env('PANEL_GLOBAL_SEARCH', true),
+        'enabled' => env('PANEL_GLOBAL_SEARCH', false),
         'key_bindings' => ['cmd+k', 'ctrl+k'],
     ],
 ];

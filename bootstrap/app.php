@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 Route::middleware('web')
                     ->group(base_path('routes/testing.php'));
             }
+
+            if (file_exists(base_path('routes/iam-testing.php'))) {
+                Route::middleware('api')
+                    ->prefix('api')
+                    ->group(base_path('routes/iam-testing.php'));
+            }
         },
     )
     ->withProviders([
@@ -33,6 +39,14 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
+        // Register IAM middleware aliases
+        $middleware->alias([
+            'iam.verify' => \App\Http\Middleware\VerifyIAMAccessToken::class,
+            'iam.inject' => \App\Http\Middleware\InjectIAMUserContext::class,
+            'iam.permission' => \App\Http\Middleware\CheckIAMPermission::class,
+            'iam.role' => \App\Http\Middleware\CheckIAMRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -19,7 +19,6 @@ it('returns_profile_and_empty_claims_for_authenticated_user', function () {
             'claims' => [
                 'apps' => [],
                 'roles' => [],
-                'perms' => [],
             ],
         ]);
 });
@@ -35,6 +34,5 @@ it('attaches_application_context_when_requested', function () {
         ->assertJsonPath('claims.application_id', $application->getKey())
         ->assertJsonPath('claims.app_key', $application->app_key)
         ->assertJsonPath('claims.apps', [])
-        ->assertJsonPath('claims.roles', [])
-        ->assertJsonPath('claims.perms', []);
+        ->assertJsonPath('claims.roles', []);
 });

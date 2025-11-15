@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Domain\Iam\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -12,6 +14,11 @@ class Application extends Model
 {
     use HasFactory;
     use SoftDeletes;
+
+    /**
+     * The table associated with the model.
+     */
+    protected $table = 'applications';
 
     /**
      * @var list<string>
@@ -104,8 +111,24 @@ class Application extends Model
     /**
      * Get the creator of this application.
      */
-    public function creator()
+    public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
+
+    /**
+     * Get all roles defined for this application.
+     */
+    public function roles(): HasMany
+    {
+        return $this->hasMany(ApplicationRole::class);
+    }
+
+    /**
+     * Get only system roles for this application.
+     */
+    public function systemRoles(): HasMany
+    {
+        return $this->roles()->where('is_system', true);
     }
 }

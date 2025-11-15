@@ -17,6 +17,7 @@
         "laravel/wayfinder": "^0.1.9",
         "spatie/laravel-activitylog": "^4",
         "spatie/laravel-medialibrary": "^11.0",
+        "spatie/laravel-permission": "^6.23",
         "stechstudio/filament-impersonate": "^4.0"
     },
     "require-dev": {

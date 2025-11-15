@@ -20,7 +20,6 @@ class UserInfoController extends Controller
         $claims = [
             'apps' => [],
             'roles' => [],
-            'perms' => [],
         ];
 
         if ($application) {

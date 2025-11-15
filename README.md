@@ -1,53 +1,344 @@
- # 🚀 Laravel Filament Template — Panel Starter
+ # 🔐 Laravel IAM + SSO RBAC
 
- Make beautiful admin panels fast. This project is a modern Laravel + Filament v4 starter with a sleek, customizable theme and sensible defaults — perfect as your next project template or a base to build internal tools.
+Central Identity & Access Management (IAM) server dengan Single Sign-On (SSO) dan Role-Based Access Control (RBAC) untuk ekosistem aplikasi Rumah Sakit.
 
- <p align="left">
-   <a href="https://www.php.net/releases/8.2/en.php"><img alt="PHP" src="https://img.shields.io/badge/PHP-%5E8.2-777BB4?logo=php&logoColor=white"></a>
-   <a href="https://laravel.com"><img alt="Laravel" src="https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white"></a>
-   <a href="https://filamentphp.com"><img alt="Filament" src="https://img.shields.io/badge/Filament-4-00B5D8"></a>
-   <a href="https://vuejs.org"><img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?logo=vue.js&logoColor=white"></a>
-   <a href="https://inertiajs.com"><img alt="Inertia" src="https://img.shields.io/badge/Inertia-v2-9553E9"></a>
-   <a href="https://tailwindcss.com"><img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white"></a>
- </p>
+<p align="left">
+  <a href="https://www.php.net/releases/8.2/en.php"><img alt="PHP" src="https://img.shields.io/badge/PHP-%5E8.2-777BB4?logo=php&logoColor=white"></a>
+  <a href="https://laravel.com"><img alt="Laravel" src="https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white"></a>
+  <a href="https://filamentphp.com"><img alt="Filament" src="https://img.shields.io/badge/Filament-4-00B5D8"></a>
+  <a href="https://spatie.be/docs/laravel-permission"><img alt="Spatie Permission" src="https://img.shields.io/badge/Spatie_Permission-6-00B5D8"></a>
+</p>
 
- ---
+---
 
- ## ✨ Highlights
- - 🧩 Filament v4 Admin ready out-of-the-box (panel at `/panel`).
- - 🎨 Modular theme with colors, mode (light/dark/system), and branding (logo + favicon).
- - ⚡ Modern stack: Laravel 12, PHP 8.2, Vite, Tailwind v4, Inertia + Vue 3.
- - 🧪 Testing with Pest pre-installed.
- - 🧭 Dev DX: single command to run server, queue, logs, and Vite.
+## ✨ Features
 
- ---
+- 🔐 **Central Authentication** - Single source of truth untuk user authentication
+- 🎫 **OAuth2-like SSO Flow** - Authorization code grant dengan JWT tokens
+- 👥 **RBAC Management** - Roles & Permissions menggunakan Spatie Permission
+- 🔑 **JWT Tokens** - Access & Refresh tokens dengan signature verification
+- 📱 **Multi-Application Support** - Manage multiple client applications
+- 🛡️ **Security First** - Hashed secrets, CSRF protection, token revocation
+- 📊 **Filament Admin Panel** - Beautiful UI untuk manage users, roles, permissions, applications
+- 🔄 **Token Introspection** - Validate tokens dari client applications
+- 📝 **Comprehensive Docs** - Full documentation untuk IAM server & client integration
 
- ## 🔧 Quick Start
+---
 
- 1) Clone & install
- ```bash
- composer install
- npm install
- cp .env.example .env
- php artisan key:generate
- ```
+## 🏗️ Architecture
 
- 2) Database (SQLite default)
- ```bash
- mkdir -p database && touch database/database.sqlite
- php artisan migrate
- ```
+```
+┌─────────────────┐         ┌─────────────────┐
+│  Client Apps    │         │   IAM Server    │
+│  (SIIMUT, etc)  │◄────────┤   (This Repo)   │
+│                 │ Tokens  │                 │
+└─────────────────┘         └─────────────────┘
+```
 
- 3) Run all-in-one dev
- ```bash
- composer dev
- # This runs: php artisan serve, queue:listen, pail logs, and npm run dev
- ```
+**Supported Client Applications:**
+- SIIMUT - Sistem Informasi Manajemen Rumah Sakit
+- Incident Reporting System
+- Pharmacy Management System
+- Any custom application
 
- 4) Create an admin user for Filament
- ```bash
- php artisan make:filament-user
- ```
+---
+
+## 🚀 Quick Start
+
+ ## 🚀 Quick Start
+
+1) **Clone & Install**
+```bash
+git clone https://github.com/juniyasyos/laravel-iam.git
+cd laravel-iam
+composer install
+npm install
+```
+
+2) **Environment Setup**
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Update `.env` with your database credentials:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_DATABASE=iam_database
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+```
+
+3) **Run Migrations**
+```bash
+php artisan migrate
+```
+
+4) **Seed Sample Data (Optional)**
+```bash
+php artisan db:seed --class=IAMSampleDataSeeder
+```
+
+This creates sample users, roles, permissions, and applications.
+
+**Sample Credentials:**
+- Admin: `admin@rs.id` / `password`
+- Doctor: `doctor@rs.id` / `password`
+- Nurse: `nurse@rs.id` / `password`
+
+**Sample Applications:**
+- SIIMUT: `siimut.app` / `siimut_secret_key_123`
+- Incident Report: `incident-report.app` / `incident_secret_key_456`
+
+5) **Build Assets & Start Server**
+```bash
+npm run build
+php artisan serve
+```
+
+Visit: `http://localhost:8000/admin`
+
+---
+
+## 📚 Documentation
+
+### Core Documentation
+- **[IAM + SSO RBAC Full Documentation](docs/IAM-SSO-RBAC-DOCUMENTATION.md)** - Complete technical documentation
+- **[Client Integration Guide](docs/CLIENT-INTEGRATION.md)** - How to integrate client applications
+- **[Setup Guide](docs/SETUP.md)** - Installation & deployment guide
+
+### What's Included
+
+**Database Schema:**
+- `applications` - Client application registry
+- `users` - User accounts with unit information
+- `roles` - User roles (via Spatie Permission)
+- `permissions` - Granular permissions (via Spatie Permission)
+- `model_has_roles` - User-role assignments
+- `model_has_permissions` - Direct permission assignments
+- `role_has_permissions` - Role-permission assignments
+
+**API Endpoints:**
+- `GET /oauth/authorize` - Authorization endpoint
+- `POST /oauth/token` - Token exchange & refresh
+- `POST /oauth/introspect` - Token validation
+- `GET /oauth/userinfo` - User information
+- `POST /oauth/revoke` - Token revocation
+
+**JWT Token Payload:**
+```json
+{
+  "sub": 123,
+  "name": "Dr. John Doe",
+  "email": "doctor@rs.id",
+  "roles": ["doctor"],
+  "permissions": ["read:patients", "write:patients"],
+  "unit": "ICU",
+  "app_key": "siimut.app",
+  "exp": 1700003600
+}
+```
+
+---
+
+## 🔧 Managing Applications
+
+### Via Filament Admin Panel
+
+1. Login to admin panel: `/admin`
+2. Navigate to "Applications"
+3. Create new application with:
+   - App Key (e.g., `myapp.app`)
+   - Name & Description
+   - Redirect URIs (JSON array)
+   - Client Secret
+   - Allowed Scopes (permissions)
+   - Token Expiry (seconds)
+
+### Via Artisan Tinker
+
+```php
+php artisan tinker
+
+use App\Models\Application;
+
+$app = Application::create([
+    'app_key' => 'myapp.app',
+    'name' => 'My Application',
+    'enabled' => true,
+    'redirect_uris' => ['http://localhost:3000/auth/callback'],
+    'secret' => 'my_client_secret', // Automatically hashed
+    'token_expiry' => 3600,
+]);
+```
+
+---
+
+## 👥 Managing Roles & Permissions
+
+### Via Filament Admin Panel
+
+1. Navigate to "Roles"
+2. Create roles (e.g., `doctor`, `nurse`, `admin`)
+3. Assign permissions to roles
+4. Navigate to "Users"
+5. Assign roles to users
+
+### Via Artisan Tinker
+
+```php
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+// Create permission
+Permission::create(['name' => 'read:patients']);
+
+// Create role
+$doctor = Role::create(['name' => 'doctor']);
+$doctor->givePermissionTo('read:patients');
+
+// Assign role to user
+$user = User::find(1);
+$user->assignRole('doctor');
+```
+
+---
+
+## 🧪 Testing SSO Flow
+
+### 1. Start IAM Server
+```bash
+php artisan serve
+```
+
+### 2. Test Authorization
+Visit:
+```
+http://localhost:8000/oauth/authorize?app_key=siimut.app&redirect_uri=http://localhost:3000/auth/callback&state=random123
+```
+
+### 3. Exchange Code for Token
+```bash
+curl -X POST http://localhost:8000/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "authorization_code",
+    "app_key": "siimut.app",
+    "app_secret": "siimut_secret_key_123",
+    "code": "YOUR_AUTH_CODE",
+    "redirect_uri": "http://localhost:3000/auth/callback"
+  }'
+```
+
+### 4. Get User Info
+```bash
+curl -X GET http://localhost:8000/oauth/userinfo \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+---
+
+## 🔌 Client Integration
+
+### Quick Setup for Client Apps
+
+1. **Install JWT Library**
+```bash
+composer require firebase/php-jwt
+```
+
+2. **Configure IAM**
+```env
+IAM_SERVER_URL=https://iam.rs.id
+IAM_APP_KEY=your_app_key
+IAM_APP_SECRET=your_client_secret
+IAM_REDIRECT_URI=https://your-app.rs.id/auth/callback
+```
+
+3. **Copy Middleware Files**
+Copy from IAM repository:
+- `app/Services/JWTTokenService.php`
+- `app/Http/Middleware/VerifyIAMAccessToken.php`
+- `app/Http/Middleware/InjectIAMUserContext.php`
+- `app/Http/Middleware/CheckIAMPermission.php`
+- `app/Http/Middleware/CheckIAMRole.php`
+
+4. **Protect Routes**
+```php
+Route::middleware(['iam.verify', 'iam.inject'])->group(function () {
+    // Authenticated routes
+    Route::get('/patients', [PatientController::class, 'index']);
+    
+    // With permission check
+    Route::middleware('iam.permission:write:patients')->group(function () {
+        Route::post('/patients', [PatientController::class, 'store']);
+    });
+});
+```
+
+**Full integration guide:** [docs/CLIENT-INTEGRATION.md](docs/CLIENT-INTEGRATION.md)
+
+---
+
+## 🛡️ Security Features
+
+- ✅ **Hashed Client Secrets** - SHA-256 hashing untuk application secrets
+- ✅ **CSRF Protection** - State parameter validation
+- ✅ **Short-lived Access Tokens** - Default 1 hour expiry
+- ✅ **Token Revocation** - Refresh tokens dapat di-revoke
+- ✅ **Redirect URI Validation** - Strict whitelist validation
+- ✅ **JWT Signature Verification** - HS256 algorithm
+- ✅ **One-time Authorization Codes** - 5 minute TTL, single use
+- ✅ **Rate Limiting** - Throttle on sensitive endpoints
+
+---
+
+## 📦 Tech Stack
+
+- **Backend:** Laravel 12, PHP 8.2
+- **Database:** MySQL / PostgreSQL
+- **Cache:** Redis (for auth codes & tokens)
+- **Admin Panel:** Filament v4
+- **JWT:** Firebase PHP-JWT
+- **RBAC:** Spatie Laravel Permission
+- **Testing:** Pest PHP
+- **Frontend (Admin):** Vue 3 + Inertia.js + Tailwind CSS v4
+
+---
+
+## 🔄 SSO Flow Diagram
+
+```
+┌─────────┐                ┌─────────┐                ┌─────────┐
+│ Client  │                │   IAM   │                │  User   │
+│   App   │                │ Server  │                │ Browser │
+└────┬────┘                └────┬────┘                └────┬────┘
+     │                          │                          │
+     │ 1. Redirect /oauth/authorize                        │
+     ├─────────────────────────►│                          │
+     │                          │ 2. Show login (if needed)│
+     │                          ├─────────────────────────►│
+     │                          │ 3. User authenticates    │
+     │                          │◄─────────────────────────┤
+     │                          │ 4. Generate auth code    │
+     │ 5. Redirect with code    │                          │
+     │◄─────────────────────────┤                          │
+     │ 6. POST /oauth/token     │                          │
+     ├─────────────────────────►│                          │
+     │ 7. Return tokens         │                          │
+     │◄─────────────────────────┤                          │
+     │ 8. API calls with token  │                          │
+     ├─────────────────────────►│                          │
+```
+
+---
+
+## 🧰 Development
 
  5) Open the panel
  - http://localhost:8000/panel
