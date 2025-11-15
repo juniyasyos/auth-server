@@ -40,7 +40,6 @@ Route::prefix('iam-test')->group(function () {
                 'name' => $claims->name,
                 'apps' => $claims->apps,
                 'roles_by_app' => $claims->rolesByApp,
-                'unit' => $claims->unit,
                 'iss' => $claims->issuer,
                 'iat' => $claims->issuedAt,
                 'exp' => $claims->expiresAt,

@@ -1,9 +1,9 @@
 <?php
 
+use App\Domain\Iam\Models\Application;
 use App\Http\Controllers\Sso\SsoRedirectController;
 use App\Services\JWTTokenService;
 use App\Models\User;
-use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
