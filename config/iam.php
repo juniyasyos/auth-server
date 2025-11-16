@@ -125,7 +125,7 @@ return [
     */
 
     'admin_access' => [
-        
+
         /*
         |--------------------------------------------------------------------------
         | Access Method
@@ -207,11 +207,11 @@ return [
     */
     'pulse_access' => [
         'use_iam_admin_rules' => env('PULSE_USE_IAM_ADMIN_RULES', true),
-        
+
         'allowed_emails' => array_filter(
             array_map('trim', explode(',', env('PULSE_ADMIN_EMAILS', 'admin@gmail.com')))
         ),
-        
+
         'callback' => null,
     ],
 

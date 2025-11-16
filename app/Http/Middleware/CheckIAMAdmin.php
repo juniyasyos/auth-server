@@ -50,7 +50,7 @@ class CheckIAMAdmin
     protected function checkAccess($user): bool
     {
         $method = config('iam.admin_access.method', 'email');
-        
+
         $emailCheck = $this->checkEmail($user);
         $callbackCheck = $this->checkCallback($user);
 
@@ -72,7 +72,7 @@ class CheckIAMAdmin
     protected function checkEmail($user): bool
     {
         $allowedEmails = config('iam.admin_access.allowed_emails', []);
-        
+
         if (empty($allowedEmails)) {
             return false;
         }
@@ -89,7 +89,7 @@ class CheckIAMAdmin
     protected function checkCallback($user): bool
     {
         $callback = config('iam.admin_access.callback');
-        
+
         if (!is_callable($callback)) {
             return false;
         }
