@@ -20,10 +20,10 @@ class IamUserRoleAssignmentsSeeder extends Seeder
         $assignments = $this->getAssignments();
 
         foreach ($assignments as $assignment) {
-            $user = User::where('email', $assignment['email'])->first();
+            $user = User::where('nip', $assignment['nip'])->first();
 
             if (! $user) {
-                $this->command->warn("⚠️  User '{$assignment['email']}' not found, skipping.");
+                $this->command->warn("⚠️  User with NIP '{$assignment['nip']}' not found, skipping.");
 
                 continue;
             }
@@ -54,7 +54,7 @@ class IamUserRoleAssignmentsSeeder extends Seeder
                     ]);
                 }
 
-                $this->command->info("  ✅ Assigned ".count($roleSlugs)." role(s) to {$user->name} for {$application->name}");
+                $this->command->info("  ✅ Assigned " . count($roleSlugs) . " role(s) to {$user->name} for {$application->name}");
             }
         }
 
@@ -67,59 +67,36 @@ class IamUserRoleAssignmentsSeeder extends Seeder
      */
     private function getAssignments(): array
     {
-        return [
-            [
-                'email' => 'admin@gmail.com',
-                'roles' => [
-                    'client-example' => ['admin'],
-                    'siimut' => ['admin', 'viewer'],
-                    'tamasuma' => ['admin'],
-                    'incident-report.app' => ['admin'],
-                    'pharmacy.app' => ['admin'],
-                ],
-            ],
-            [
-                'email' => 'doctor@gmail.com',
-                'roles' => [
-                    'client-example' => ['viewer'],
-                    'siimut' => ['doctor', 'viewer'],
-                    'incident-report.app' => ['reporter'],
-                ],
-            ],
-            [
-                'email' => 'nurse@gmail.com',
-                'roles' => [
-                    'client-example' => ['viewer'],
-                    'siimut' => ['nurse', 'viewer'],
-                    'incident-report.app' => ['reporter'],
-                ],
-            ],
-            [
-                'email' => 'pharmacist@gmail.com',
-                'roles' => [
-                    'client-example' => ['viewer'],
-                    'siimut' => ['viewer'],
-                    'pharmacy.app' => ['pharmacist'],
-                ],
-            ],
-            [
-                'email' => 'manager@gmail.com',
-                'roles' => [
-                    'client-example' => ['viewer'],
-                    'siimut' => ['viewer'],
-                    'tamasuma' => ['manager'],
-                    'incident-report.app' => ['officer', 'viewer'],
-                ],
-            ],
-            [
-                'email' => 'staff@gmail.com',
-                'roles' => [
-                    'client-example' => ['viewer'],
-                    'siimut' => ['receptionist'],
-                    'tamasuma' => ['staff'],
-                    'incident-report.app' => ['reporter'],
-                ],
-            ],
-        ];
+        $assignments = [];
+
+        // Get all users
+        $users = User::all();
+
+        foreach ($users as $user) {
+            if ($user->nip === '0000.00000') {
+                // Super admin - gets super_admin for SIIMUT and admin for all other apps
+                $assignments[] = [
+                    'nip' => $user->nip,
+                    'roles' => [
+                        'client-example' => ['admin'],
+                        'siimut' => ['super_admin'],
+                        'tamasuma' => ['admin'],
+                        'incident-report.app' => ['admin'],
+                        'pharmacy.app' => ['admin'],
+                    ],
+                ];
+            } else {
+                // Regular users - only unit_kerja for SIIMUT and admin for client-example
+                $assignments[] = [
+                    'nip' => $user->nip,
+                    'roles' => [
+                        'client-example' => ['admin'],
+                        'siimut' => ['unit_kerja'],
+                    ],
+                ];
+            }
+        }
+
+        return $assignments;
     }
 }

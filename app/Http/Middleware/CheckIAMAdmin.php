@@ -49,51 +49,150 @@ class CheckIAMAdmin
      */
     protected function checkAccess($user): bool
     {
-        $method = config('iam.admin_access.method', 'email');
+        $rules = config('iam.admin_access.rules', []);
 
-        $emailCheck = $this->checkEmail($user);
-        $callbackCheck = $this->checkCallback($user);
+        if (empty($rules)) {
+            return false;
+        }
 
-        return match ($method) {
-            'email' => $emailCheck,
-            'callback' => $callbackCheck,
-            'both' => $emailCheck && $callbackCheck,
-            'either' => $emailCheck || $callbackCheck,
-            default => $emailCheck,
+        $operator = config('iam.admin_access.operator', 'or'); // 'and' or 'or'
+
+        $results = [];
+        foreach ($rules as $rule) {
+            $results[] = $this->evaluateRule($user, $rule);
+        }
+
+        return $operator === 'and'
+            ? !in_array(false, $results, true)
+            : in_array(true, $results, true);
+    }
+
+    /**
+     * Evaluate a single access rule.
+     *
+     * @param  \App\Models\User  $user
+     * @param  array  $rule
+     * @return bool
+     */
+    protected function evaluateRule($user, array $rule): bool
+    {
+        $type = $rule['type'] ?? null;
+
+        return match ($type) {
+            'field' => $this->checkField($user, $rule),
+            'field_in' => $this->checkFieldIn($user, $rule),
+            'callback' => $this->checkCallbackRule($user, $rule),
+            'role' => $this->checkRole($user, $rule),
+            'permission' => $this->checkPermission($user, $rule),
+            default => false,
         };
     }
 
     /**
-     * Check if user email is in whitelist.
+     * Check if user field matches expected value.
      *
      * @param  \App\Models\User  $user
+     * @param  array  $rule
      * @return bool
      */
-    protected function checkEmail($user): bool
+    protected function checkField($user, array $rule): bool
     {
-        $allowedEmails = config('iam.admin_access.allowed_emails', []);
+        $field = $rule['field'] ?? null;
+        $value = $rule['value'] ?? null;
+        $operator = $rule['operator'] ?? '=';
 
-        if (empty($allowedEmails)) {
+        if (!$field || !isset($user->$field)) {
             return false;
         }
 
-        return in_array($user->email, $allowedEmails);
+        $fieldValue = $user->$field;
+
+        return match ($operator) {
+            '=' => $fieldValue == $value,
+            '==' => $fieldValue === $value,
+            '!=' => $fieldValue != $value,
+            '!==' => $fieldValue !== $value,
+            '>' => $fieldValue > $value,
+            '>=' => $fieldValue >= $value,
+            '<' => $fieldValue < $value,
+            '<=' => $fieldValue <= $value,
+            'contains' => str_contains($fieldValue, $value),
+            'starts_with' => str_starts_with($fieldValue, $value),
+            'ends_with' => str_ends_with($fieldValue, $value),
+            default => false,
+        };
     }
 
     /**
-     * Check using custom callback.
+     * Check if user field value is in allowed list.
      *
      * @param  \App\Models\User  $user
+     * @param  array  $rule
      * @return bool
      */
-    protected function checkCallback($user): bool
+    protected function checkFieldIn($user, array $rule): bool
     {
-        $callback = config('iam.admin_access.callback');
+        $field = $rule['field'] ?? null;
+        $values = $rule['values'] ?? [];
+
+        if (!$field || !isset($user->$field) || empty($values)) {
+            return false;
+        }
+
+        return in_array($user->$field, $values, true);
+    }
+
+    /**
+     * Check using custom callback from rule.
+     *
+     * @param  \App\Models\User  $user
+     * @param  array  $rule
+     * @return bool
+     */
+    protected function checkCallbackRule($user, array $rule): bool
+    {
+        $callback = $rule['callback'] ?? null;
 
         if (!is_callable($callback)) {
             return false;
         }
 
         return (bool) $callback($user);
+    }
+
+    /**
+     * Check if user has specific role.
+     *
+     * @param  \App\Models\User  $user
+     * @param  array  $rule
+     * @return bool
+     */
+    protected function checkRole($user, array $rule): bool
+    {
+        $roleName = $rule['role'] ?? null;
+
+        if (!$roleName || !method_exists($user, 'hasRole')) {
+            return false;
+        }
+
+        return $user->hasRole($roleName);
+    }
+
+    /**
+     * Check if user has specific permission.
+     *
+     * @param  \App\Models\User  $user
+     * @param  array  $rule
+     * @return bool
+     */
+    protected function checkPermission($user, array $rule): bool
+    {
+        $permission = $rule['permission'] ?? null;
+
+        if (!$permission || !method_exists($user, 'can')) {
+            return false;
+        }
+
+        return $user->can($permission);
     }
 }

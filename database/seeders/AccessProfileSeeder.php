@@ -17,9 +17,9 @@ class AccessProfileSeeder extends Seeder
         // Daftar profil akses global yang umum di RS kamu
         $profiles = [
             [
-                'slug'        => 'kepala_unit',
-                'name'        => 'Kepala Unit',
-                'description' => 'Profil akses untuk kepala unit/instalasi di berbagai aplikasi.',
+                'slug'        => 'super_admin',
+                'name'        => 'Super Admin',
+                'description' => 'Profil akses penuh untuk super administrator sistem.',
                 'is_system'   => true,
             ],
             [
@@ -29,15 +29,15 @@ class AccessProfileSeeder extends Seeder
                 'is_system'   => true,
             ],
             [
-                'slug'        => 'admin_mutu',
-                'name'        => 'Admin Mutu',
-                'description' => 'Profil akses admin aplikasi yang terkait mutu.',
-                'is_system'   => true,
+                'slug'        => 'unit_kerja',
+                'name'        => 'Unit Kerja',
+                'description' => 'Profil akses untuk unit kerja operasional.',
+                'is_system'   => false,
             ],
             [
-                'slug'        => 'staf_unit',
-                'name'        => 'Staf Unit',
-                'description' => 'Profil akses staf/unit operasional.',
+                'slug'        => 'admin_app',
+                'name'        => 'Admin Aplikasi',
+                'description' => 'Profil akses admin untuk aplikasi lainnya.',
                 'is_system'   => false,
             ],
         ];
@@ -55,23 +55,27 @@ class AccessProfileSeeder extends Seeder
         }
 
         // Mapping access profiles to application roles for clarity and maintainability.
-        // Contoh: kepala_unit => admin di siimut, viewer di tamasuma, dll.
+        // super_admin => semua admin, tim_mutu => tim_mutu di siimut, unit_kerja => unit_kerja di siimut + admin di apps lain
         $mappings = [
-            'kepala_unit' => [
-                'siimut' => ['admin'],
-                'tamasuma' => ['viewer'],
+            'super_admin' => [
+                'client-example' => ['admin'],
+                'siimut' => ['super_admin'],
+                'tamasuma' => ['admin'],
+                'incident-report.app' => ['admin'],
+                'pharmacy.app' => ['admin'],
             ],
             'tim_mutu' => [
-                'siimut' => ['viewer'],
-                'incident-report.app' => ['viewer'],
+                'siimut' => ['tim_mutu'],
             ],
-            'admin_mutu' => [
-                'siimut' => ['admin'],
-                'tamasuma' => ['manager'],
+            'unit_kerja' => [
+                'siimut' => ['unit_kerja'],
+                'client-example' => ['admin'],
             ],
-            'staf_unit' => [
-                'siimut' => ['receptionist'],
-                'tamasuma' => ['staff'],
+            'admin_app' => [
+                'client-example' => ['admin'],
+                'tamasuma' => ['admin'],
+                'incident-report.app' => ['admin'],
+                'pharmacy.app' => ['admin'],
             ],
         ];
 
@@ -110,7 +114,7 @@ class AccessProfileSeeder extends Seeder
 
             if (! empty($roleIds)) {
                 $profile->roles()->syncWithoutDetaching(array_unique($roleIds));
-                $this->command->info("  ✅ Mapped ".count($roleIds)." role(s) to profile {$profile->name}");
+                $this->command->info("  ✅ Mapped " . count($roleIds) . " role(s) to profile {$profile->name}");
             }
         }
     }

@@ -18,10 +18,10 @@ class UserAccessProfileSeeder extends Seeder
         $assignments = $this->getAssignments();
 
         foreach ($assignments as $assignment) {
-            $user = User::where('email', $assignment['email'])->first();
+            $user = User::where('nip', $assignment['nip'])->first();
 
             if (! $user) {
-                $this->command->warn("⚠️  User '{$assignment['email']}' not found, skipping.");
+                $this->command->warn("⚠️  User with NIP '{$assignment['nip']}' not found, skipping.");
                 continue;
             }
 
@@ -51,27 +51,14 @@ class UserAccessProfileSeeder extends Seeder
      */
     private function getAssignments(): array
     {
-        return [
-            [
-                'email' => 'admin@gmail.com',
-                'profiles' => ['admin_mutu'],
-            ],
-            [
-                'email' => 'doctor@gmail.com',
-                'profiles' => ['kepala_unit'],
-            ],
-            [
-                'email' => 'nurse@gmail.com',
-                'profiles' => ['staf_unit'],
-            ],
-            [
-                'email' => 'manager@gmail.com',
-                'profiles' => ['kepala_unit', 'tim_mutu'],
-            ],
-            [
-                'email' => 'staff@gmail.com',
-                'profiles' => ['staf_unit'],
-            ],
-        ];
+        $users = User::all();
+        $store = [];
+        foreach ($users as $user) {
+            $store[] = [
+                'nip' => $user->nip,
+                'profiles' => ['unit_kerja'],
+            ];
+        }
+        return $store;
     }
 }

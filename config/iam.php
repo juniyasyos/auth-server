@@ -120,7 +120,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure who can access IAM admin panel (Filament) and monitoring tools (Pulse).
-    | You can use email whitelist, custom callback function, or both.
+    | Supports multiple rule types with flexible operators.
     |
     */
 
@@ -128,47 +128,78 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Access Method
+        | Access Rules
         |--------------------------------------------------------------------------
         |
-        | Determine how to check admin access:
-        | - 'email': Only check email whitelist
-        | - 'callback': Use custom callback function
-        | - 'both': Check email AND callback (both must pass)
-        | - 'either': Check email OR callback (one must pass)
+        | Define access rules as an array. Each rule is evaluated and combined
+        | based on the operator setting below.
+        |
+        | Rule types:
+        | 
+        | 1. field_in: Check if field value is in allowed list
+        |    ['type' => 'field_in', 'field' => 'nip', 'values' => ['0000.00000', '1111.11111']]
+        |
+        | 2. field: Check field with operator
+        |    ['type' => 'field', 'field' => 'is_admin', 'operator' => '=', 'value' => true]
+        |    ['type' => 'field', 'field' => 'email', 'operator' => 'ends_with', 'value' => '@admin.com']
+        |    Operators: =, ==, !=, !==, >, >=, <, <=, contains, starts_with, ends_with
+        |
+        | 3. callback: Custom function
+        |    ['type' => 'callback', 'callback' => function($user) { return $user->hasPermission('admin'); }]
+        |
+        | 4. role: Check Spatie role (if using spatie/laravel-permission)
+        |    ['type' => 'role', 'role' => 'super-admin']
+        |
+        | 5. permission: Check Spatie permission
+        |    ['type' => 'permission', 'permission' => 'access-iam-panel']
         |
         */
-        'method' => env('IAM_ADMIN_ACCESS_METHOD', 'email'),
+        'rules' => [
+            // Check if NIP is in whitelist
+            [
+                'type' => 'field_in',
+                'field' => 'nip',
+                'values' => array_filter(
+                    array_map('trim', explode(',', env('IAM_ADMIN_NIPS', '0000.00000')))
+                ),
+            ],
+
+            // Example: Check boolean field
+            // [
+            //     'type' => 'field',
+            //     'field' => 'can_access_iam_panel',
+            //     'operator' => '=',
+            //     'value' => true,
+            // ],
+
+            // Example: Check email domain
+            // [
+            //     'type' => 'field',
+            //     'field' => 'email',
+            //     'operator' => 'ends_with',
+            //     'value' => '@admin.company.com',
+            // ],
+
+            // Example: Custom callback
+            // [
+            //     'type' => 'callback',
+            //     'callback' => function ($user) {
+            //         return $user->department === 'IT' && $user->level >= 5;
+            //     },
+            // ],
+        ],
 
         /*
         |--------------------------------------------------------------------------
-        | Email Whitelist
+        | Rules Operator
         |--------------------------------------------------------------------------
         |
-        | List of email addresses that are allowed to access IAM admin panel.
-        | Add emails to .env as comma-separated: IAM_ADMIN_EMAILS="admin@gmail.com,user@example.com"
+        | How to combine multiple rules:
+        | - 'or': User passes if ANY rule passes (default)
+        | - 'and': User passes only if ALL rules pass
         |
         */
-        'allowed_emails' => array_filter(
-            array_map('trim', explode(',', env('IAM_ADMIN_EMAILS', 'admin@gmail.com')))
-        ),
-
-        /*
-        |--------------------------------------------------------------------------
-        | Custom Access Callback
-        |--------------------------------------------------------------------------
-        |
-        | Define custom logic to determine admin access.
-        | The callback receives the authenticated User model.
-        | Return true to grant access, false to deny.
-        |
-        | Example:
-        | 'callback' => function ($user) {
-        |     return $user->is_super_admin || $user->hasPermissionTo('access-iam-panel');
-        | }
-        |
-        */
-        'callback' => null,
+        'operator' => env('IAM_ADMIN_ACCESS_OPERATOR', 'or'),
 
         /*
         |--------------------------------------------------------------------------

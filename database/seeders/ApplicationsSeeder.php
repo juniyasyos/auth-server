@@ -11,7 +11,7 @@ class ApplicationsSeeder extends Seeder
     public function run(): void
     {
         // Get admin user untuk created_by
-        $admin = User::where('email', 'admin@gmail.com')->first();
+        $admin = User::where('nip', '0000.00000')->first();
 
         $applications = [
             [

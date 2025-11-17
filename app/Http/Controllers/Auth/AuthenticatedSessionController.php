@@ -54,17 +54,18 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): \Symfony\Component\HttpFoundation\Response
     {
         $trackingId = $this->logger->startPerformanceTracking('login_process');
-        $email = $request->string('email')->toString();
+        $nip = $request->string('nip')->toString();
 
         // Log login attempt
         $this->logger->logLoginAttempt(
-            email: $email,
+            email: $nip, // Using NIP as identifier
             ipAddress: $request->ip(),
             userAgent: $request->userAgent() ?? 'Unknown',
             additionalContext: [
                 'has_sso_context' => $request->session()->has('sso.intended_app'),
                 'intended_app' => $request->session()->get('sso.intended_app'),
                 'remember_me' => $request->boolean('remember'),
+                'login_method' => 'nip',
             ]
         );
 
@@ -144,20 +145,21 @@ class AuthenticatedSessionController extends Controller
         } catch (\Throwable $exception) {
             // Log login failure
             $this->logger->logLoginFailed(
-                email: $email,
+                email: $nip,
                 reason: $exception->getMessage(),
                 ipAddress: $request->ip(),
                 additionalContext: [
                     'exception_class' => get_class($exception),
                     'has_sso_context' => $request->session()->has('sso.intended_app'),
                     'intended_app' => $request->session()->get('sso.intended_app'),
+                    'login_method' => 'nip',
                 ]
             );
 
             $this->logger->endPerformanceTracking($trackingId, [
                 'login_successful' => false,
                 'error' => $exception->getMessage(),
-                'email' => $email,
+                'nip' => $nip,
             ]);
 
             throw $exception;

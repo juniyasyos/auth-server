@@ -310,14 +310,14 @@
                                 @csrf
                                 <label class="form-control w-full">
                                     <div class="label py-1">
-                                        <span class="label-text text-[11px] text-slate-200/90">Email</span>
+                                        <span class="label-text text-[11px] text-slate-200/90">NIP</span>
                                     </div>
                                     <input
-                                        name="email"
-                                        type="email"
+                                        name="nip"
+                                        type="text"
                                         required
-                                        value="{{ old('email', $devAutofill['email'] ?? '') }}"
-                                        placeholder="nama@rumahsakit.id"
+                                        value="{{ old('nip', $devAutofill['nip'] ?? '') }}"
+                                        placeholder="Nomor Induk Karyawan"
                                         class="input input-sm input-bordered w-full rounded-xl bg-slate-950/40 border-slate-600/60 text-sm text-slate-50 placeholder:text-slate-500" />
                                 </label>
 

@@ -14,7 +14,7 @@ class Login extends BaseLogin
         if (AppFacade::environment('local')) {
             // Prefill credentials for local development only.
             $this->form->fill([
-                'email' => 'admin@gmail.com',
+                'nip' => '0000.00000',
                 'password' => 'password',
             ]);
         }

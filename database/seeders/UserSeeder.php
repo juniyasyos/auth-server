@@ -2,69 +2,81 @@
 
 namespace Database\Seeders;
 
+use App\Models\Position;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed the user's data into the database.
      */
     public function run(): void
     {
-        // Seed basic users with unit information
-        $users = [
-            [
-                'name' => 'Admin User',
-                'email' => 'admin@gmail.com',
-                'password' => 'password',
-                'active' => true,
-            ],
-            [
-                'name' => 'Dr. John Doe',
-                'email' => 'doctor@gmail.com',
-                'password' => 'password',
-                'active' => true,
-            ],
-            [
-                'name' => 'Jane Smith',
-                'email' => 'nurse@gmail.com',
-                'password' => 'password',
-                'active' => true,
-            ],
-            [
-                'name' => 'Manager User',
-                'email' => 'manager@gmail.com',
-                'password' => 'password',
-                'active' => true,
-            ],
-            [
-                'name' => 'Pharmacist User',
-                'email' => 'pharmacist@gmail.com',
-                'password' => 'password',
-                'active' => true,
-            ],
-            [
-                'name' => 'Staff User',
-                'email' => 'staff@gmail.com',
-                'password' => 'password',
-                'active' => true,
-            ],
-        ];
+        User::factory()->create([
+            'nip' => '0000.00000',
+            'name' => 'admin',
+            'email' => 'admin@admin.com',
+            'password' => Hash::make('adminpassword'),
+            'active' => true,
+        ]);
 
-        foreach ($users as $data) {
-            User::query()->updateOrCreate(
-                ['email' => $data['email']],
-                [
-                    'name' => $data['name'],
-                    'password' => Hash::make($data['password']),
-                    'active' => $data['active'],
-                    'email_verified_at' => now(),
-                ]
-            );
+        $filePath = database_path('data/user.json');
+
+        if (! File::exists($filePath)) {
+            Log::warning('File "user.json" tidak ditemukan di folder database/data.');
+
+            return;
         }
 
-        $this->command->info('Users seeded successfully!');
+        $data = json_decode(File::get($filePath), true);
+
+        if (json_last_error() !== \JSON_ERROR_NONE) {
+            Log::error('Gagal mendecode file JSON: ' . json_last_error_msg());
+
+            return;
+        }
+
+        $usersToInsert = [];
+
+        foreach ($data as $userData) {
+            $rawName = $userData['nama'];
+
+            // Hilangkan gelar akademik
+            $cleanName = preg_replace('/,\s*(S\.Kep\.?|Ners|Amd\.? Kep|SKM|S\.?\.?T\.?|\w+\.)+/i', '', $rawName);
+            $cleanName = trim($cleanName);
+
+            // Generate email: nama tanpa spasi, lowercase
+            $baseEmail = Str::lower(Str::slug($cleanName, '')) . '@example.com';
+
+            // Pastikan email unik
+            $email = $baseEmail;
+            $suffix = 1;
+            while (User::where('email', $email)->exists()) {
+                $email = Str::lower(Str::slug($cleanName, '')) . $suffix++ . '@example.com';
+            }
+
+            $usersToInsert[] = [
+                'nip' => $userData['id'],
+                'name' => $cleanName,
+                'email' => $email,
+                'password' => Hash::make('RschSSO2025'),
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (count($usersToInsert) > 0) {
+            User::insert($usersToInsert);
+            Log::info('Data pengguna berhasil dimasukkan ke dalam database.');
+        } else {
+            Log::warning('Tidak ada data pengguna untuk dimasukkan.');
+        }
     }
 }

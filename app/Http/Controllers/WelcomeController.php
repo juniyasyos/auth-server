@@ -53,8 +53,8 @@ class WelcomeController extends Controller
         $devAutofill = null;
         if (app()->environment('local')) {
             $devAutofill = [
-                'email' => 'admin@gmail.com',
-                'password' => 'password',
+                'nip' => '0000.00000',
+                'password' => 'adminpassword',
             ];
         }
 
