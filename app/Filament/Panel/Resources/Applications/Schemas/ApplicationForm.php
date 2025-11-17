@@ -59,7 +59,21 @@ class ApplicationForm
                                         ->dehydrateStateUsing(fn(string $state): string => Str::lower($state))
                                         ->rules(['regex:/^[a-z0-9\-_]+$/'])
                                         ->helperText('Lowercase, URL-safe, unik. Contoh: siimut_portal, incident_report.')
-                                        ->suffixIcon('heroicon-m-finger-print'),
+                                        ->prefixIcon('heroicon-m-finger-print')
+                                        ->copyable()
+                                        ->suffixAction(
+                                            Action::make('generateAppKey')
+                                                ->icon('heroicon-m-sparkles')
+                                                ->tooltip('Generate app key dari nama aplikasi')
+                                                ->action(function (Set $set, Get $get): void {
+                                                    $name = (string) $get('name');
+
+                                                    $set('app_key', Str::slug(
+                                                        $name !== '' ? $name : Str::random(8),
+                                                        '_',
+                                                    ));
+                                                })
+                                        ),
                                 ]),
 
                                 Toggle::make('enabled')
@@ -104,14 +118,31 @@ class ApplicationForm
                                     ->label('SSO Shared Secret')
                                     ->password()
                                     ->revealable()
+                                    ->copyable()
                                     ->nullable()
                                     ->maxLength(255)
                                     ->helperText('Shared secret yang digunakan partner aplikasi untuk menandatangani / memverifikasi request.')
                                     ->suffixAction(
                                         Action::make('generateSecret')
                                             ->icon('heroicon-m-key')
-                                            ->tooltip('Generate strong random secret')
-                                            ->action(fn(Set $set) => $set('secret', Str::random(48))),
+                                            ->tooltip('Generate strong random secret (aman untuk .env)')
+                                            ->action(function (Set $set, Get $get): void {
+                                                $appKey = (string) $get('app_key');
+
+                                                $prefix = $appKey !== ''
+                                                    ? Str::upper($appKey) . '_'
+                                                    : '';
+
+                                                // Secret kuat tapi aman dipakai di .env (tanpa simbol aneh)
+                                                $secret = $prefix . Str::password(
+                                                    length: 40,
+                                                    letters: true,
+                                                    numbers: true,
+                                                    symbols: false,
+                                                );
+
+                                                $set('secret', $secret);
+                                            })
                                     )
                                     ->columnSpanFull(),
                             ]),
