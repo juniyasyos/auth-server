@@ -30,14 +30,13 @@ class ApplicationsSeeder extends Seeder
             ],
             [
                 'app_key' => 'siimut',
-                'name' => 'SIIMUT - Sistem Informasi Manajemen RS',
-                'description' => 'Aplikasi utama untuk manajemen rumah sakit termasuk pasien, perawatan, dan administrasi',
+                'name' => 'SIIMUT - Sistem Informasi Manajemen Indikator Utama Terpadu',
+                'description' => 'Aplikasi manajemen indikator kinerja utama rumah sakit dan unit kerja',
                 'enabled' => true,
                 'redirect_uris' => [
-                    'http://localhost:3000/auth/callback',
-                    'https://siimut.rs.id/auth/callback',
+                    'http://127.0.0.1:8088',
                 ],
-                'callback_url' => 'https://siimut.rs.id/auth/callback',
+                'callback_url' => 'http://127.0.0.1:8088/auth/callback',
                 'secret' => 'siimut_secret_key_123',
                 'logo_url' => null,
                 'token_expiry' => 3600,
