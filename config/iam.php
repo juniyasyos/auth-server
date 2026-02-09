@@ -100,6 +100,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | User Response Fields
+    |--------------------------------------------------------------------------
+    |
+    | Define which user fields should be included in API responses.
+    | Fields are returned in the order specified here.
+    |
+    | Default fields: id, name, nip, active
+    |
+    */
+
+    'user_fields' => env('IAM_USER_FIELDS', 'id,name,nip,active'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Default User Roles
     |--------------------------------------------------------------------------
     |

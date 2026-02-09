@@ -25,11 +25,11 @@ class AccessProfileResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    protected static ?string $navigationLabel = 'Access Profiles';
+    protected static ?string $navigationLabel = 'Role Bundles';
 
-    protected static ?string $modelLabel = 'Access Profile';
+    protected static ?string $modelLabel = 'Role Bundle';
 
-    protected static ?string $pluralModelLabel = 'Access Profiles';
+    protected static ?string $pluralModelLabel = 'Role Bundles';
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -46,8 +46,7 @@ class AccessProfileResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\RolesRelationManager::class,
-            RelationManagers\UsersRelationManager::class,
+            //
         ];
     }
 

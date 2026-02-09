@@ -3,6 +3,7 @@
 namespace App\Filament\Panel\Resources\Applications\Tables;
 
 use App\Domain\Iam\Models\Application;
+use App\Filament\Panel\Resources\Applications\RelationManagers\RolesRelationManager;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,6 +19,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Guava\FilamentModalRelationManagers\Actions\RelationManagerAction;
 use Illuminate\Database\Eloquent\Builder;
 
 class ApplicationsTable
@@ -113,6 +115,12 @@ class ApplicationsTable
                         ])->save();
                     })
                     ->requiresConfirmation(),
+                RelationManagerAction::make()
+                    ->label('Manage Roles')
+                    ->icon('heroicon-o-shield-check')
+                    ->color('info')
+                    ->slideOver()
+                    ->relationManager(RolesRelationManager::make()),
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),

@@ -188,4 +188,12 @@ class User extends Authenticatable
             })
             ->exists();
     }
+
+    /**
+     * Find user for Passport authentication using NIP.
+     */
+    public function findForPassport(string $username): static
+    {
+        return $this->where('nip', $username)->first();
+    }
 }

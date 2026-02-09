@@ -17,7 +17,7 @@ class RolesRelationManager extends RelationManager
 {
     protected static string $relationship = 'roles';
 
-    protected static ?string $title = 'Assigned Application Roles';
+    protected static ?string $title = 'Included Roles';
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -51,8 +51,8 @@ class RolesRelationManager extends RelationManager
                 TextColumn::make('is_system')
                     ->label('System Role')
                     ->badge()
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'System' : 'Custom')
-                    ->color(fn (bool $state): string => $state ? 'warning' : 'success'),
+                    ->formatStateUsing(fn(bool $state): string => $state ? 'System' : 'Custom')
+                    ->color(fn(bool $state): string => $state ? 'warning' : 'success'),
             ])
             ->filters([
                 //
@@ -69,13 +69,13 @@ class RolesRelationManager extends RelationManager
                             ->orderBy('name');
                     })
                     ->recordSelectSearchColumns(['name', 'slug'])
-                    ->schema(fn (AttachAction $action): array => [
+                    ->schema(fn(AttachAction $action): array => [
                         Select::make('recordId')
                             ->label('Application Role')
                             ->options(function () {
                                 return ApplicationRole::with('application')
                                     ->get()
-                                    ->groupBy(fn ($role) => $role->application->name ?? 'Unknown')
+                                    ->groupBy(fn($role) => $role->application->name ?? 'Unknown')
                                     ->map(function ($roles, $appName) {
                                         return $roles->mapWithKeys(function ($role) {
                                             return [$role->id => $role->name . ' (' . $role->slug . ')'];

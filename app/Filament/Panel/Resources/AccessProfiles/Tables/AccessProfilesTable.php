@@ -2,6 +2,8 @@
 
 namespace App\Filament\Panel\Resources\AccessProfiles\Tables;
 
+use App\Filament\Panel\Resources\AccessProfiles\RelationManagers\RolesRelationManager;
+use App\Filament\Panel\Resources\AccessProfiles\RelationManagers\UsersRelationManager;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -12,6 +14,7 @@ use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Guava\FilamentModalRelationManagers\Actions\RelationManagerAction;
 
 class AccessProfilesTable
 {
@@ -83,6 +86,18 @@ class AccessProfilesTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                RelationManagerAction::make()
+                    ->label('Manage Roles')
+                    ->icon('heroicon-o-shield-check')
+                    ->color('info')
+                    ->slideOver()
+                    ->relationManager(RolesRelationManager::make()),
+                RelationManagerAction::make()
+                    ->label('Manage Users')
+                    ->icon('heroicon-o-users')
+                    ->color('success')
+                    ->slideOver()
+                    ->relationManager(UsersRelationManager::make()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

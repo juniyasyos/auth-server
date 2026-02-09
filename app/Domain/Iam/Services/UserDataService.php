@@ -19,13 +19,7 @@ class UserDataService
      */
     public function getUserData(User $user, ?Application $application = null, bool $includeProfiles = true): array
     {
-        $data = [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'active' => $user->active,
-            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
-        ];
+        $data = $this->buildUserFields($user);
 
         // Get all effective roles (direct + via access profiles)
         $effectiveRoles = $user->effectiveApplicationRoles()->with('application')->get();
@@ -50,6 +44,43 @@ class UserDataService
 
         // Include direct role assignments
         $data['direct_roles'] = $this->formatDirectRoles($user, $application);
+
+        return $data;
+    }
+
+    /**
+     * Build user fields based on configuration.
+     * 
+     * @param User $user
+     * @return array
+     */
+    private function buildUserFields(User $user): array
+    {
+        $fields = collect(explode(',', config('iam.user_fields', 'id,name,email,nip,active,email_verified_at')))
+            ->map('trim')
+            ->filter()
+            ->toArray();
+
+        $data = [];
+        $fieldMappings = [
+            'id' => fn() => $user->id,
+            'nip' => fn() => $user->nip ?? null,
+            'name' => fn() => $user->name,
+            'email' => fn() => $user->email,
+            'active' => fn() => $user->active,
+            'email_verified_at' => fn() => $user->email_verified_at?->toIso8601String(),
+            'created_at' => fn() => $user->created_at?->toIso8601String(),
+            'updated_at' => fn() => $user->updated_at?->toIso8601String(),
+        ];
+
+        foreach ($fields as $field) {
+            if (isset($fieldMappings[$field])) {
+                $data[$field] = $fieldMappings[$field]();
+            } elseif ($user->hasAttribute($field)) {
+                // Support for custom user attributes
+                $data[$field] = $user->getAttribute($field);
+            }
+        }
 
         return $data;
     }

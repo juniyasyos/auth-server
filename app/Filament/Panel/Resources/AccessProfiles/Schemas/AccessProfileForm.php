@@ -24,15 +24,15 @@ class AccessProfileForm
                 Grid::make(1)
                     ->columnSpanFull()
                     ->schema([
-                        Section::make('Profile Identity')
-                            ->description('Identitas profil akses yang digunakan untuk mengelompokkan hak akses lintas aplikasi.')
+                        Section::make('Bundle Identity')
+                            ->description('Create a named bundle that combines related roles from different applications. This bundle can be assigned to users as a single unit.')
                             ->schema([
                                 Grid::make(2)->schema([
                                     TextInput::make('name')
-                                        ->label('Profile Name')
+                                        ->label('Bundle Name')
                                         ->required()
                                         ->maxLength(255)
-                                        ->placeholder('Contoh: Quality Team, Manajemen RS, IT Support')
+                                        ->placeholder('Example: Quality Team, Hospital Management, IT Support')
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function (string $operation, $state, Set $set, Get $get): void {
                                             // Auto generate slug hanya saat create dan slug masih kosong.
@@ -48,34 +48,33 @@ class AccessProfileForm
                                         }),
 
                                     TextInput::make('slug')
-                                        ->label('Profile Slug')
+                                        ->label('Bundle Slug')
                                         ->required()
                                         ->maxLength(64)
                                         ->rules(['regex:/^[a-z0-9\-_]+$/'])
                                         ->placeholder('quality_team, manajemen_rs, it_support')
-                                        ->helperText('Dipakai internal oleh sistem IAM. Hanya huruf kecil, angka, dash, dan underscore.')
+                                        ->helperText('Used internally by the IAM system. Lowercase letters, numbers, dashes and underscores only.')
                                         ->dehydrateStateUsing(fn(string $state): string => Str::lower($state))
                                         ->suffixIcon('heroicon-m-finger-print'),
                                 ]),
 
                                 Grid::make(2)->schema([
                                     Toggle::make('is_system')
-                                        ->label('System Profile')
+                                        ->label('System Bundle')
                                         ->default(false)
-                                        ->helperText('Jika aktif, profil ini dianggap kritikal dan biasanya tidak dihapus / diubah oleh user biasa.'),
-
+                                        ->helperText('If enabled, this bundle is considered critical and usually cannot be deleted or modified by regular users.'),
                                     Toggle::make('is_active')
                                         ->label('Active')
                                         ->default(true)
-                                        ->helperText('Nonaktifkan untuk menghentikan pemakaian profil tanpa menghapus mapping user & role.'),
+                                        ->helperText('Disable to prevent new user assignments while keeping existing assignments.'),
                                 ]),
                             ]),
 
-                        Section::make('Roles & Permissions')
-                            ->description('Mapping profile ini ke role-role aplikasi. Satu profile bisa punya banyak role lintas aplikasi.')
+                        Section::make('Included Roles')
+                            ->description('Select which application roles to include in this bundle. Users assigned to this bundle will automatically receive all included roles.')
                             ->schema([
                                 Select::make('roles')
-                                    ->label('Assigned Roles (Application — Role)')
+                                    ->label('Select Roles (Application — Role)')
                                     ->relationship(
                                         name: 'roles',
                                         titleAttribute: 'name',
@@ -89,18 +88,18 @@ class AccessProfileForm
                                     ->multiple()
                                     ->searchable()
                                     ->preload()
-                                    ->helperText('Pilih kombinasi aplikasi + role yang akan dibungkus oleh profile ini.')
+                                    ->helperText('Choose a combination of application + role pairs to include in this bundle.')
                                     ->columnSpanFull(),
                             ]),
 
-                        Section::make('Metadata & Description')
-                            ->description('Dokumentasi singkat mengenai tujuan, ruang lingkup, dan siapa yang menggunakan profile ini.')
+                        Section::make('Documentation')
+                            ->description('Brief documentation about the purpose, scope, and who uses this bundle.')
                             ->schema([
                                 Textarea::make('description')
                                     ->label('Description')
                                     ->rows(4)
                                     ->maxLength(1000)
-                                    ->placeholder('Contoh: Profile untuk tim mutu RS, memiliki akses ke SIIMUT (admin) dan Incident Reporter (viewer).')
+                                    ->placeholder('Example: Bundle for hospital quality team, with access to SIIMUT (admin) and Incident Reporter (viewer).')
                                     ->columnSpanFull(),
                             ]),
                     ]),

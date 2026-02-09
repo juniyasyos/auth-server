@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\UserInfoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,6 +25,12 @@ Route::middleware('auth:api')->prefix('auth')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
+});
+
+// Protected user routes
+Route::middleware('auth:api')->group(function () {
+    Route::get('/users/me', UserInfoController::class);
+    Route::get('/user', UserInfoController::class);
 });
 
 $ssoRoutes = require __DIR__ . '/sso.php';

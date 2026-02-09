@@ -2,6 +2,7 @@
 
 namespace App\Filament\Panel\Resources\Users\Tables;
 
+use App\Filament\Panel\Resources\Users\RelationManagers\AccessProfilesRelationManager;
 use App\Models\User;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -16,6 +17,7 @@ use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Guava\FilamentModalRelationManagers\Actions\RelationManagerAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -34,16 +36,16 @@ class UsersTable
             ->striped()
             ->persistFiltersInSession()
             ->persistSearchInSession()
-            ->searchPlaceholder('Cari nama atau email pengguna...')
+            ->searchPlaceholder('Cari nama, NIP, atau email pengguna...')
             ->columns([
 
-                // Nama + email
+                // Nama + nip + email
                 TextColumn::make('name')
                     ->label('Pengguna')
                     ->weight('semibold')
-                    ->description(fn(User $record) => $record->email)
+                    ->description(fn(User $record) => $record->nip . ($record->email ? ' • ' . $record->email : ''))
                     ->icon('heroicon-m-user-circle')
-                    ->searchable(['name', 'email'])
+                    ->searchable(['name', 'nip', 'email'])
                     ->sortable()
                     ->toggleable(),
 
@@ -184,6 +186,12 @@ class UsersTable
                     ->label('Impersonate')
                     ->icon('heroicon-m-arrow-right-on-rectangle')
                     ->visible(fn(User $record) => Auth::id() !== $record->id),
+                RelationManagerAction::make()
+                    ->label('Manage Role Bundles')
+                    ->icon('heroicon-o-user-group')
+                    ->color('info')
+                    ->slideOver()
+                    ->relationManager(AccessProfilesRelationManager::make()),
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Detail')

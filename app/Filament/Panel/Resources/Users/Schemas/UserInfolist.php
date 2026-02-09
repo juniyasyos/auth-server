@@ -33,12 +33,20 @@ class UserInfolist
                                     ->icon('heroicon-m-identification')
                                     ->extraAttributes(['class' => 'text-gray-900 dark:text-gray-100 text-base']),
 
+                                TextEntry::make('nip')
+                                    ->label('NIP')
+                                    ->copyable()
+                                    ->copyMessage('NIP berhasil disalin')
+                                    ->icon('heroicon-m-hashtag')
+                                    ->extraAttributes(['class' => 'text-primary-600 dark:text-primary-400 font-medium']),
+
                                 TextEntry::make('email')
-                                    ->label('Alamat Email')
+                                    ->label('Email')
                                     ->copyable()
                                     ->copyMessage('Email berhasil disalin')
                                     ->icon('heroicon-m-envelope')
-                                    ->extraAttributes(['class' => 'text-primary-600 dark:text-primary-400 font-medium']),
+                                    ->placeholder('Tidak ada email')
+                                    ->extraAttributes(['class' => 'text-gray-600 dark:text-gray-400']),
 
                                 IconEntry::make('active')
                                     ->label('Status Akun')

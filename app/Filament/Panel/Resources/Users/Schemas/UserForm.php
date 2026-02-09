@@ -38,10 +38,25 @@ class UserForm
                                             ->helperText('Gunakan nama lengkap sesuai identitas atau standar internal organisasi.')
                                             ->hintIcon('heroicon-m-user-circle'),
 
-                                        TextInput::make('email')
-                                            ->label('Email Kerja')
-                                            ->email()
+                                        TextInput::make('nip')
+                                            ->label('NIP')
                                             ->required()
+                                            ->maxLength(255)
+                                            ->unique(
+                                                table: User::class,
+                                                column: 'nip',
+                                                ignoreRecord: true,
+                                            )
+                                            ->placeholder('Masukkan NIP pengguna')
+                                            ->autocomplete('username')
+                                            ->suffixIcon('heroicon-m-identification')
+                                            ->helperText('Nomor Induk Pegawai yang digunakan untuk login.')
+                                            ->hintIcon('heroicon-m-hashtag'),
+
+                                        TextInput::make('email')
+                                            ->label('Email (Opsional)')
+                                            ->email()
+                                            ->nullable()
                                             ->maxLength(255)
                                             ->unique(
                                                 table: User::class,
@@ -51,7 +66,7 @@ class UserForm
                                             ->placeholder('nama@perusahaan.com')
                                             ->autocomplete('email')
                                             ->suffixIcon('heroicon-m-envelope')
-                                            ->helperText('Gunakan email resmi yang terdaftar di sistem IAM.')
+                                            ->helperText('Email opsional untuk keperluan backup atau notifikasi.')
                                             ->hintIcon('heroicon-m-at-symbol'),
                                     ]),
                             ]),

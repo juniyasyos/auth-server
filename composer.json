@@ -9,6 +9,7 @@
         "php": "^8.2",
         "andreiio/blade-remix-icon": "^3.6",
         "filament/filament": "~4.0",
+        "guava/filament-modal-relation-managers": "^2.0",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
