@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Filament\Panel\Pages;
+
+use App\Filament\Panel\Widgets\RecentActivities;
+use App\Filament\Panel\Widgets\RolesDistribution;
+use App\Filament\Panel\Widgets\StatsOverview;
+use BackedEnum;
+use Filament\Pages\Dashboard as BaseDashboard;
+
+class Dashboard extends BaseDashboard
+{
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-home';
+
+    protected static ?string $navigationLabel = 'Dashboard';
+
+    protected static ?int $navigationSort = 0;
+
+    public function getWidgets(): array
+    {
+        return [
+            StatsOverview::class,
+            RolesDistribution::class,
+            RecentActivities::class,
+        ];
+    }
+
+    public static function getNavigationItems(): array
+    {
+        return []; // Hide from navigation - access via "/" path
+    }
+}
