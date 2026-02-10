@@ -86,6 +86,7 @@ class AccessProfileForm
                                             . $record->name
                                     )
                                     ->multiple()
+                                    ->default([])
                                     ->searchable()
                                     ->preload()
                                     ->helperText('Choose a combination of application + role pairs to include in this bundle.')
