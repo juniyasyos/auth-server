@@ -4,6 +4,7 @@ namespace App\Filament\Panel\Resources\AccessProfiles\Tables;
 
 use App\Filament\Panel\Resources\AccessProfiles\RelationManagers\RolesRelationManager;
 use App\Filament\Panel\Resources\AccessProfiles\RelationManagers\UsersRelationManager;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -40,7 +41,7 @@ class AccessProfilesTable
                     ->counts('roles')
                     ->badge()
                     ->color('info')
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
                 TextColumn::make('users_count')
                     ->label('Users')
@@ -48,8 +49,7 @@ class AccessProfilesTable
                     ->badge()
                     ->color('success')
                     ->sortable()
-                    ->toggleable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true ),
                 IconColumn::make('is_system')
                     ->label('System')
                     ->boolean()
@@ -57,12 +57,12 @@ class AccessProfilesTable
                     ->falseIcon('heroicon-o-pencil')
                     ->trueColor('warning')
                     ->falseColor('gray')
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->tooltip(fn(bool $state): string => $state ? 'System profile (protected)' : 'Custom profile'),
                 ToggleColumn::make('is_active')
                     ->label('Active')
                     ->onColor('success')
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->offColor('danger'),
                 TextColumn::make('updated_at')
                     ->label('Last Updated')
@@ -86,18 +86,20 @@ class AccessProfilesTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                RelationManagerAction::make()
-                    ->label('Manage Roles')
-                    ->icon('heroicon-o-shield-check')
-                    ->color('info')
-                    ->slideOver()
-                    ->relationManager(RolesRelationManager::make()),
-                RelationManagerAction::make()
-                    ->label('Manage Users')
-                    ->icon('heroicon-o-users')
-                    ->color('success')
-                    ->slideOver()
-                    ->relationManager(UsersRelationManager::make()),
+                ActionGroup::make([
+                    RelationManagerAction::make()
+                        ->label('Manage Roles')
+                        ->icon('heroicon-o-shield-check')
+                        ->color('info')
+                        ->slideOver()
+                        ->relationManager(RolesRelationManager::make()),
+                    RelationManagerAction::make()
+                        ->label('Manage Users')
+                        ->icon('heroicon-o-users')
+                        ->color('success')
+                        ->slideOver()
+                        ->relationManager(UsersRelationManager::make()),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
