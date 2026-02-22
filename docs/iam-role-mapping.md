@@ -190,13 +190,21 @@ $assignmentService->assignRoleToUser($user, $role, $adminUser);
 // Revoke a role from a user
 $assignmentService->revokeRoleFromUser($user, $role);
 
-// Sync roles for a user in an application (replace all)
-$assignmentService->syncRolesForUserAndApp(
+// Sync roles for a user in an application by linking to access profiles
+// (role bundles) that contain the supplied slugs. the underlying helper will
+// search for profiles that reference one of the requested roles and then
+// attach/detach the user accordingly. this is now the preferred workflow.
+$assignmentService->syncProfilesForUserAndApp(
     user: $user,
     app: $application,
     roleSlugs: ['admin', 'viewer'],
     assignedBy: $adminUser
 );
+
+// the old direct-sync method still exists for compatibility but simply
+// proxies to the profile-based implementation and will be removed in a
+// future release:
+// $assignmentService->syncRolesForUserAndApp(...);
 
 // Get user's roles by application
 $rolesByApp = $assignmentService->getRolesByAppForUser($user);

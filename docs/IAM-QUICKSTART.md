@@ -227,12 +227,17 @@ $assignmentService = app(UserRoleAssignmentService::class);
 // Assign role to user
 $assignmentService->assignRoleToUser($user, $role);
 
-// Sync roles (replace all roles for user in app)
-$assignmentService->syncRolesForUserAndApp(
+// Sync roles for user in an app by mapping requested slugs to access
+// profiles (role bundles). the assignment service will attach the user to
+// any profile that contains one of the supplied roles.
+$assignmentService->syncProfilesForUserAndApp(
     user: $user,
     app: $application,
     roleSlugs: ['admin', 'viewer']
 );
+
+// the legacy `syncRolesForUserAndApp()` method still exists but simply
+// proxies to the new behaviour and will be removed later.
 
 // Get user's roles by app
 $rolesByApp = $assignmentService->getRolesByAppForUser($user);

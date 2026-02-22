@@ -23,6 +23,12 @@ class CreateAccessProfile extends CreateRecord
         return $data;
     }
 
+    // when Filament calls the `afterCreate` hook it will invoke this method
+    // from the base page. we only need to sync the temporary role ids that
+    // were removed from the form data, there is no parent implementation so
+    // calling `parent::afterCreate()` causes Livewire to blow up with a
+    // missing method exception. the hook may be protected, but Filament
+    // invokes it internally via callHook(), so visibility is fine.
     protected function afterCreate(): void
     {
         $record = $this->record;
@@ -31,6 +37,6 @@ class CreateAccessProfile extends CreateRecord
             $record->roles()->sync($this->tempRoleIds);
         }
 
-        parent::afterCreate();
+        // intentionally do not call parent, base class has no afterCreate
     }
 }

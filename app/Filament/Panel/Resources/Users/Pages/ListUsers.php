@@ -21,25 +21,30 @@ class ListUsers extends ListRecords
             CreateAction::make(),
 
             Action::make('syncFromApps')
-                ->label('Sinkron semua pengguna')
+                ->label('Sinkron pengguna (pilih role bundle)')
                 ->icon('heroicon-m-arrow-path')
                 ->color('primary')
-                ->action(function (): void {
-                    $apps = Application::all();
-                    if ($apps->isEmpty()) {
+                ->schema([
+                    \Filament\Forms\Components\CheckboxList::make('profile_ids')
+                        ->label('Role Bundles')
+                        ->options(\App\Domain\Iam\Models\AccessProfile::active()->pluck('name', 'id')->toArray())
+                        ->columns(2)
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $ids = $data['profile_ids'] ?? [];
+                    if (empty($ids)) {
                         Notification::make()
-                            ->title('No applications found')
+                            ->title('Tidak ada role bundle dipilih')
                             ->warning()
                             ->send();
                         return;
                     }
 
-                    foreach ($apps as $app) {
-                        SyncApplicationUsers::dispatch($app);
-                    }
+                    SyncApplicationUsers::dispatch($ids);
 
                     Notification::make()
-                        ->title('User sync jobs queued')
+                        ->title('Job sinkron pengguna dijadwalkan')
                         ->success()
                         ->send();
                 }),

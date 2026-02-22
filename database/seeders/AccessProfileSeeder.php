@@ -19,25 +19,26 @@ class AccessProfileSeeder extends Seeder
             [
                 'slug'        => 'super_admin',
                 'name'        => 'Super Admin',
-                'description' => 'Profil akses penuh untuk super administrator sistem.',
+                'description' => 'Memiliki hak akses penuh terhadap seluruh fitur dan konfigurasi sistem, termasuk manajemen pengguna, pengaturan, dan kontrol data secara menyeluruh.',
                 'is_system'   => true,
             ],
             [
                 'slug'        => 'tim_mutu',
                 'name'        => 'Tim Mutu',
-                'description' => 'Profil akses untuk tim mutu rumah sakit.',
+                'description' => 'Bertanggung jawab dalam pengelolaan, validasi, serta evaluasi indikator mutu rumah sakit untuk memastikan standar kualitas layanan terpenuhi.',
                 'is_system'   => true,
             ],
+
             [
-                'slug'        => 'unit_kerja',
-                'name'        => 'Unit Kerja',
-                'description' => 'Profil akses untuk unit kerja operasional.',
+                'slug'        => 'pic_indikator',
+                'name'        => 'Unit Kerja: PIC Indikator',
+                'description' => 'Berperan sebagai penanggung jawab indikator mutu pada unit kerja masing-masing, termasuk pemantauan, pelaporan, dan tindak lanjut capaian.',
                 'is_system'   => false,
             ],
             [
-                'slug'        => 'admin_app',
-                'name'        => 'Admin Aplikasi',
-                'description' => 'Profil akses admin untuk aplikasi lainnya.',
+                'slug'        => 'pengumpul_data',
+                'name'        => 'Unit Kerja: Pengumpul Data',
+                'description' => 'Bertugas melakukan pengumpulan dan input data operasional sesuai indikator yang telah ditetapkan untuk mendukung proses evaluasi mutu.',
                 'is_system'   => false,
             ],
         ];
@@ -55,7 +56,10 @@ class AccessProfileSeeder extends Seeder
         }
 
         // Mapping access profiles to application roles for clarity and maintainability.
-        // super_admin => semua admin, tim_mutu => tim_mutu di siimut, unit_kerja => unit_kerja di siimut + admin di apps lain
+        // super_admin => semua admin,
+        // tim_mutu => tim_mutu di siimut,
+        // pic_indikator => role pic_indikator di siimut,
+        // pengumpul_data => role pengumpul_data di siimut + admin di apps lain jika diperlukan
         // $mappings = [
         //     'super_admin' => [
         //         'siimut' => ['super_admin'],
@@ -64,8 +68,12 @@ class AccessProfileSeeder extends Seeder
         //     'tim_mutu' => [
         //         'siimut' => ['tim_mutu'],
         //     ],
-        //     'unit_kerja' => [
-        //         'siimut' => ['unit_kerja'],
+        //     'pic_indikator' => [
+        //         'siimut' => ['pic_indikator'],
+        //     ],
+        //     'pengumpul_data' => [
+        //         'siimut' => ['pengumpul_data'],
+        //         'other-app' => ['admin'], // contoh jika perlu
         //     ],
         //     'admin_app' => [
         //         'client-example' => ['admin'],

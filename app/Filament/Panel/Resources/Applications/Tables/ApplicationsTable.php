@@ -162,7 +162,18 @@ class ApplicationsTable
                     ->icon('heroicon-o-user-group')
                     ->color('primary')
                     ->action(function (Application $record): void {
-                        SyncApplicationUsers::dispatch($record);
+                        // gather all access profiles that reference roles from this
+                        // specific application and send their ids to the job. this
+                        // keeps compatibility with the previous behaviour while
+                        // still using the new profile-based mechanism.
+                        $profileIds = \App\Domain\Iam\Models\AccessProfile::query()
+                            ->whereHas('roles', function ($q) use ($record) {
+                                $q->where('application_id', $record->id);
+                            })
+                            ->pluck('id')
+                            ->toArray();
+
+                        SyncApplicationUsers::dispatch($record, $profileIds);
                         Notification::make()
                             ->title('User sync job queued')
                             ->success()

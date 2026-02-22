@@ -95,8 +95,10 @@ class ApplicationRoleSyncService
                 'sync_url' => $syncUrl,
             ]);
 
-            // authenticate the request according to configured backchannel method
-            if (config('iam.backchannel_method', 'jwt') === 'jwt') {
+            // if verification is disabled we don't send any authentication
+            if (! config('iam.backchannel_verify', true)) {
+                $response = Http::timeout(10)->get($syncUrl);
+            } elseif (config('iam.backchannel_method', 'jwt') === 'jwt') {
                 $token = app(JWTTokenService::class)->generateBackchannelToken($application);
                 $response = Http::withToken($token)
                     ->timeout(10)

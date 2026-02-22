@@ -13,6 +13,20 @@ use App\Services\JWTTokenService;
 class ApplicationUserSyncService
 {
     /**
+     * Optional profile IDs supplied by the caller (Filament modal). When
+     * non‑empty the assignment service will restrict which bundles may be
+     * attached/detached.
+     *
+     * @var array<int>
+     */
+    protected array $allowedProfileIds = [];
+
+    public function __construct(array $allowedProfileIds = [])
+    {
+        $this->allowedProfileIds = $allowedProfileIds;
+    }
+
+    /**
      * Sync users (including their application roles) from client application.
      *
      * Existing users are looked up by NIP (primary) or email.  New users are
@@ -38,6 +52,9 @@ class ApplicationUserSyncService
         $updated = 0;
 
         $assignmentService = new UserRoleAssignmentService();
+        if (! empty($this->allowedProfileIds)) {
+            $assignmentService->setAllowedProfileIds($this->allowedProfileIds);
+        }
 
         foreach ($clientUsers as $cUser) {
             // find by nip first, fallback to email if provided
@@ -72,7 +89,10 @@ class ApplicationUserSyncService
             // roles array expected on client side; default to empty
             $roleSlugs = $cUser['roles'] ?? [];
             try {
-                $assignmentService->syncRolesForUserAndApp($user, $application, $roleSlugs);
+                // the new workflow no longer assigns roles directly; instead we
+                // link the user to the appropriate access profiles that contain
+                // the given slugs for this application.
+                $assignmentService->syncProfilesForUserAndApp($user, $application, $roleSlugs);
             } catch (\Exception $e) {
                 // log and continue, but don't fail the entire sync
                 Log::warning('user_role_sync_failed', [
@@ -119,11 +139,24 @@ class ApplicationUserSyncService
                 'sync_url' => $syncUrl,
             ]);
 
-            // authentication: attach a short-lived JWT so the client can verify
-            $token = app(JWTTokenService::class)->generateBackchannelToken($application);
-            $response = Http::withToken($token)
-                ->timeout(10)
-                ->get($syncUrl);
+            // if verification is disabled we don't send any auth headers
+            if (! config('iam.backchannel_verify', true)) {
+                $response = Http::timeout(10)->get($syncUrl);
+            } elseif (config('iam.backchannel_method', 'jwt') === 'jwt') {
+                $token = app(JWTTokenService::class)->generateBackchannelToken($application);
+                $response = Http::withToken($token)
+                    ->timeout(10)
+                    ->get($syncUrl);
+            } else {
+                // legacy hmac signature on empty body
+                $secret = config('sso.secret', env('SSO_SECRET', ''));
+                $signature = hash_hmac('sha256', '', $secret);
+                $header = config('sso.backchannel.signature_header', 'IAM-Signature');
+
+                $response = Http::withHeaders([$header => $signature])
+                    ->timeout(10)
+                    ->get($syncUrl);
+            }
 
             if (! $response->successful()) {
                 return [
@@ -163,17 +196,24 @@ class ApplicationUserSyncService
      */
     protected function getIamUsers(Application $application): array
     {
+        // include users who either have a direct application role (for
+        // backwards compatibility) or who are connected to profiles that
+        // contain roles for this application.  the `effectiveApplicationRoles`
+        // helper on the model simplifies gathering the slugs.
         $users = User::query()
-            ->whereHas('applicationRoles', function ($q) use ($application) {
-                $q->where('application_id', $application->id);
+            ->where(function ($q) use ($application) {
+                $q->whereHas('applicationRoles', function ($q2) use ($application) {
+                    $q2->where('application_id', $application->id);
+                })
+                    ->orWhereHas('accessProfiles.roles', function ($q3) use ($application) {
+                        $q3->where('application_id', $application->id);
+                    });
             })
-            ->with(['applicationRoles' => function ($q) use ($application) {
-                $q->where('application_id', $application->id);
-            }])
+            ->with(['accessProfiles.roles', 'applicationRoles'])
             ->get();
 
         return $users->map(function (User $user) use ($application) {
-            $roles = $user->applicationRoles
+            $roles = $user->effectiveApplicationRoles()
                 ->where('application_id', $application->id)
                 ->pluck('slug')
                 ->toArray();

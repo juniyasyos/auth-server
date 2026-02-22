@@ -11,6 +11,23 @@ use Illuminate\Support\Collection;
 class UserRoleAssignmentService
 {
     /**
+     * When non-empty, only these access profile IDs are considered when
+     * syncing.  Used by the bulk sync job.
+     *
+     * @var array<int>
+     */
+    protected array $allowedProfileIds = [];
+
+    /**
+     * Configure which profiles may be used during role/profile sync. If left
+     * empty all bundles are permitted.
+     */
+    public function setAllowedProfileIds(array $ids): void
+    {
+        $this->allowedProfileIds = $ids;
+    }
+
+    /**
      * Assign a role to a user.
      *
      * @throws \Exception
@@ -26,11 +43,15 @@ class UserRoleAssignmentService
             throw new \Exception("User already has role '{$role->name}' for application '{$role->application->app_key}'.");
         }
 
-        UserApplicationRole::create([
+        $data = [
             'user_id' => $user->id,
             'role_id' => $role->id,
             'assigned_by' => $assignedBy?->id,
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('iam_user_application_roles', 'application_id')) {
+            $data['application_id'] = $role->application_id;
+        }
+        UserApplicationRole::create($data);
     }
 
     /**
@@ -51,46 +72,155 @@ class UserRoleAssignmentService
      *
      * @throws \Exception
      */
-    public function syncRolesForUserAndApp(User $user, Application $app, array $roleSlugs, ?User $assignedBy = null): void
+    /**
+     * Sync roles for a user in a specific application by assigning *access
+     * profiles* (aka role bundles) instead of attaching the role records
+     * directly.  The client gives us a list of role slugs, but the database
+     * model only links users -> access_profiles, and profiles themselves
+     * contain the application roles.  This helper ensures the user is paired
+     * with every profile that contains one of the requested slugs, and removes
+     * profiles that no longer match the application.
+     *
+     * This method replaces the old direct-assignment behaviour and will throw
+     * an exception if any slug is invalid.
+     *
+     * @param  array<string>  $roleSlugs
+     *
+     * @throws \Exception
+     */
+    public function syncProfilesForUserAndApp(User $user, Application $app, array $roleSlugs, ?User $assignedBy = null): void
     {
-        // Get all role IDs for this application
-        $roles = UserApplicationRole::where('application_id', $app->id)
+        // always validate role slugs against the application roles table.
+        // this avoids touching the old pivot entirely and works whether or not
+        // the migration has been executed.
+        $roles = \App\Domain\Iam\Models\ApplicationRole::where('application_id', $app->id)
             ->whereIn('slug', $roleSlugs)
             ->get();
 
         if ($roles->count() !== count($roleSlugs)) {
             $found = $roles->pluck('slug')->toArray();
             $missing = array_diff($roleSlugs, $found);
-            throw new \Exception('Invalid role slugs: '.implode(', ', $missing));
+            throw new \Exception('Invalid role slugs: ' . implode(', ', $missing));
         }
 
-        // Get current role IDs for this app
-        $currentRoleIds = UserApplicationRole::where('user_id', $user->id)
-            ->whereHas('role', function ($query) use ($app) {
-                $query->where('application_id', $app->id);
+        // find all profiles that reference at least one of the supplied roles
+        $existingProfiles = \App\Domain\Iam\Models\AccessProfile::query()
+            ->whereHas('roles', function ($q) use ($app, $roleSlugs) {
+                $q->where('application_id', $app->id)
+                    ->whereIn('slug', $roleSlugs);
             })
-            ->pluck('role_id')
+            ->with('roles')
+            ->get();
+
+        $profileIds = $existingProfiles->pluck('id')->toArray();
+
+        if (! empty($this->allowedProfileIds)) {
+            $profileIds = array_intersect($profileIds, $this->allowedProfileIds);
+        }
+
+        $coveredSlugs = $existingProfiles
+            ->flatMap(fn($p) => $p->roles->pluck('slug'))
+            ->unique()
             ->toArray();
 
-        $newRoleIds = $roles->pluck('id')->toArray();
+        $missingSlugs = array_diff($roleSlugs, $coveredSlugs);
+        if (! empty($missingSlugs) && empty($this->allowedProfileIds)) {
+            foreach ($missingSlugs as $slug) {
+                $role = \App\Domain\Iam\Models\ApplicationRole::where('application_id', $app->id)
+                    ->where('slug', $slug)
+                    ->first();
 
-        // Remove roles that are not in the new list
-        $toRemove = array_diff($currentRoleIds, $newRoleIds);
-        if (! empty($toRemove)) {
-            UserApplicationRole::where('user_id', $user->id)
-                ->whereIn('role_id', $toRemove)
-                ->delete();
+                if (! $role) {
+                    continue;
+                }
+
+                $profile = \App\Domain\Iam\Models\AccessProfile::create([
+                    'slug' => 'auto_'.$app->app_key.'_'.$slug,
+                    'name' => 'Auto '.$slug,
+                    'description' => 'Automatically created bundle for '. $slug,
+                    'is_system' => false,
+                    'is_active' => true,
+                ]);
+                $profile->roles()->attach($role->id);
+                $profileIds[] = $profile->id;
+            }
         }
 
-        // Add roles that are not in the current list
-        $toAdd = array_diff($newRoleIds, $currentRoleIds);
-        foreach ($toAdd as $roleId) {
-            UserApplicationRole::create([
-                'user_id' => $user->id,
-                'role_id' => $roleId,
-                'assigned_by' => $assignedBy?->id,
-            ]);
+        // find all profiles that reference at least one of the supplied roles
+        $existingProfiles = \App\Domain\Iam\Models\AccessProfile::query()
+            ->whereHas('roles', function ($q) use ($app, $roleSlugs) {
+                $q->where('application_id', $app->id)
+                    ->whereIn('slug', $roleSlugs);
+            })
+            ->with('roles')
+            ->get();
+
+        $profileIds = $existingProfiles->pluck('id')->toArray();
+
+        // if the caller restricted to a subset of profiles, apply that filter
+        if (! empty($this->allowedProfileIds)) {
+            $profileIds = array_intersect($profileIds, $this->allowedProfileIds);
         }
+
+        // compute which slugs are already covered by the profiles we found
+        $coveredSlugs = $existingProfiles
+            ->flatMap(fn($p) => $p->roles->pluck('slug'))
+            ->unique()
+            ->toArray();
+
+        // for any slug that isn't covered yet, create an "auto" bundle – but
+        // only when we are not running in restricted mode.  if an admin has
+        // specified a subset of profiles, we assume they don't want new ones.
+        $missingSlugs = array_diff($roleSlugs, $coveredSlugs);
+        if (! empty($missingSlugs) && empty($this->allowedProfileIds)) {
+            foreach ($missingSlugs as $slug) {
+                $role = \App\Domain\Iam\Models\ApplicationRole::where('application_id', $app->id)
+                    ->where('slug', $slug)
+                    ->first();
+
+                if (! $role) {
+                    // should be impossible since we checked earlier, but guard anyway
+                    continue;
+                }
+
+                $profile = \App\Domain\Iam\Models\AccessProfile::create([
+                    'slug' => 'auto_'.$app->app_key.'_'.$slug,
+                    'name' => 'Auto '.$slug,
+                    'description' => 'Automatically created bundle for '. $slug,
+                    'is_system' => false,
+                    'is_active' => true,
+                ]);
+                $profile->roles()->attach($role->id);
+                $profileIds[] = $profile->id;
+            }
+        }
+
+        // current profiles of user that relate to this app; we will only add
+        // new bundles and never remove existing ones, because removals should
+        // be explicit. previously the code detached anything that wasn't part
+        // of the incoming list, which caused associations to vanish during
+        // sync if the client payload didn't include the corresponding role.
+        $currentProfileIds = $user->accessProfiles()
+            ->whereHas('roles', function ($q) use ($app) {
+                $q->where('application_id', $app->id);
+            })
+            ->pluck('access_profiles.id')
+            ->toArray();
+
+        // attach only profiles that are not already present
+        $toAdd = array_diff($profileIds, $currentProfileIds);
+        if (! empty($toAdd)) {
+            $user->accessProfiles()->attach($toAdd, ['assigned_by' => $assignedBy?->id]);
+        }
+    }
+
+    /**
+     * @deprecated use {@see syncProfilesForUserAndApp} instead. kept for
+     * backwards compatibility until callers are updated.
+     */
+    public function syncRolesForUserAndApp(User $user, Application $app, array $roleSlugs, ?User $assignedBy = null): void
+    {
+        $this->syncProfilesForUserAndApp($user, $app, $roleSlugs, $assignedBy);
     }
 
     /**

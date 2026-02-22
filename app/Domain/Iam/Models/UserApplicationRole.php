@@ -5,6 +5,7 @@ namespace App\Domain\Iam\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Domain\Iam\Models\Application;
 
 class UserApplicationRole extends Model
 {
@@ -21,6 +22,7 @@ class UserApplicationRole extends Model
     protected $fillable = [
         'user_id',
         'role_id',
+        'application_id',
         'assigned_by',
     ];
 
@@ -58,6 +60,12 @@ class UserApplicationRole extends Model
      */
     public function application(): BelongsTo
     {
+        // convenience relation in case the application_id column is used in
+        // queries; fall back to the role relationship otherwise.
+        if ($this->application_id) {
+            return $this->belongsTo(Application::class);
+        }
+
         return $this->role->application();
     }
 }

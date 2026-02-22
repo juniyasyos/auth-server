@@ -165,7 +165,11 @@ class UserDataService
         $query = $user->applicationRoles()->with('application');
 
         if ($application) {
-            $query->where('application_id', $application->id);
+            // the pivot table also contains an `application_id` column, so a plain
+            // where() call becomes ambiguous when the relationship joins the
+            // iam_roles table (which has its own application_id). using
+            // wherePivot() ensures the condition is applied on the join table.
+            $query->wherePivot('application_id', $application->id);
         }
 
         return $query->get()->map(fn($role) => [

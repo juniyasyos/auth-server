@@ -15,20 +15,256 @@ beforeEach(function () {
     Http::fake();
 });
 
-it('queues a job that fetches with jwt token when syncing', function () {
+it('queues a job that sends HMAC header when verification enabled', function () {
     $app = Application::factory()->create([
         'callback_url' => 'http://client.test',
         'app_key' => 'abc',
     ]);
 
-    // dispatch job directly rather than going through HTTP
-    SyncApplicationUsers::dispatch($app);
+    // legacy behaviour: no profile restriction
+    SyncApplicationUsers::dispatch([]);
 
-    // the job will run immediately because of the fake queue
     Http::assertSent(function ($request) use ($app) {
-        // check URL and signature header presence (legacy HMAC)
         $urlOK = $request->url() === 'http://client.test/api/iam/sync-users?app_key=abc';
         $header = config('sso.backchannel.signature_header');
         return $urlOK && ! empty($request->header($header));
     });
+});
+
+it('omits auth headers when verification disabled', function () {
+    config(['iam.backchannel_verify' => false]);
+
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'abc',
+    ]);
+
+    SyncApplicationUsers::dispatch([]);
+
+    Http::assertSent(function ($request) use ($app) {
+        return $request->url() === 'http://client.test/api/iam/sync-users?app_key=abc'
+            && empty($request->header(config('sso.backchannel.signature_header')))
+            && empty($request->header('Authorization'));
+    });
+});
+
+
+// when users are synced we no longer assign roles directly; the service
+// should pair the user with access profiles that contain the requested
+// slugs for the application.
+it('syncs a client user by attaching the appropriate access profiles', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'abc',
+    ]);
+
+    // create two application roles and a pair of profiles
+    $role1 = App\\Domain\\Iam\\Models\\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'alpha',
+        'name' => 'Alpha',
+    ]);
+    $role2 = App\\Domain\\Iam\\Models\\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'beta',
+        'name' => 'Beta',
+    ]);
+
+    $profile1 = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profile1->roles()->attach($role1->id);
+    $profile2 = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profile2->roles()->attach($role2->id);
+
+    // fake the client returning a single user with the 'alpha' role only
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '111', 'name' => 'Foo', 'email' => 'foo@example.com', 'roles' => ['alpha']],
+            ],
+        ], 200),
+    ]);
+
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $result = $service->syncUsers($app);
+
+    $user = App\Models\User::where('nip', '111')->first();
+    expect($user)->not->toBeNull();
+
+    // user should be linked only to profile1 and not profile2
+    expect($user->accessProfiles->pluck('id')->toArray())->toContain($profile1->id);
+    expect($user->accessProfiles->pluck('id')->toArray())->not->toContain($profile2->id);
+
+    // we also expect the returned iam_users array to show the alpha role
+    expect($result['iam_users'][0]['roles'])->toContain('alpha');
+
+    // direct application_roles table should remain empty for this user
+    expect($user->applicationRoles)->toBeEmpty();
+});
+
+
+// job should only attach profiles that were selected in the modal
+it('job respects chosen bundles and ignores the rest', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'klm',
+    ]);
+
+    $roleA = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'a',
+        'name' => 'A',
+    ]);
+    $roleB = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'b',
+        'name' => 'B',
+    ]);
+
+    $profileA = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profileA->roles()->attach($roleA->id);
+    $profileB = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profileB->roles()->attach($roleB->id);
+
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '333', 'name' => 'Baz', 'email' => 'baz@example.com', 'roles' => ['a','b']],
+            ],
+        ], 200),
+    ]);
+
+    $job = new App\Jobs\SyncApplicationUsers([
+        $profileA->id,
+    ]);
+    $job->handle();
+
+    $user = App\Models\User::where('nip', '333')->first();
+    expect($user)->not->toBeNull();
+
+    // only profileA attached, profileB ignored
+    expect($user->accessProfiles->pluck('id')->toArray())->toEqualCanonicalizing([$profileA->id]);
+});
+
+
+// dispatching via application record should also work and limit to that app
+it('dispatching with an application restricts sync to that app', function () {
+    $app1 = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'one',
+    ]);
+    $app2 = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'two',
+    ]);
+
+    $role1 = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app1->id,
+        'slug' => 'x',
+        'name' => 'X',
+    ]);
+    $role2 = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app2->id,
+        'slug' => 'y',
+        'name' => 'Y',
+    ]);
+
+    $profile1 = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profile1->roles()->attach($role1->id);
+    $profile2 = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profile2->roles()->attach($role2->id);
+
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '444', 'name' => 'Qux', 'email' => 'qux@example.com', 'roles' => ['x','y']],
+            ],
+        ], 200),
+    ]);
+
+    SyncApplicationUsers::dispatch($app1, [$profile1->id, $profile2->id]);
+
+    $user = App\Models\User::where('nip', '444')->first();
+    expect($user)->not->toBeNull();
+
+    // only profile1 attached, because job limited to app1
+    expect($user->accessProfiles->pluck('id')->toArray())->toEqualCanonicalizing([$profile1->id]);
+});
+
+
+it('does not remove existing bundles when client roles shrink', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'shrink',
+    ]);
+
+    $role1 = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'one',
+        'name' => 'One',
+    ]);
+    $role2 = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'two',
+        'name' => 'Two',
+    ]);
+
+    $profile1 = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profile1->roles()->attach($role1->id);
+    $profile2 = App\Domain\Iam\Models\AccessProfile::factory()->create();
+    $profile2->roles()->attach($role2->id);
+
+    $user = App\Models\User::factory()->create(['nip' => '777']);
+    $user->accessProfiles()->attach([$profile1->id, $profile2->id]);
+
+    // client returns only role1, so natural bundle calculation would yield
+    // profile1 only – but we expect profile2 to remain attached
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '777', 'name' => 'Keep', 'email' => 'keep@example.com', 'roles' => ['one']],
+            ],
+        ], 200),
+    ]);
+
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $service->syncUsers($app);
+
+    $fresh = $user->fresh();
+    expect($fresh->accessProfiles->pluck('id')->toArray())
+        ->toEqualCanonicalizing([$profile1->id, $profile2->id]);
+});
+
+it('creates an access profile automatically when none exist for a role', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'xyz',
+    ]);
+
+    $role = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'gamma',
+        'name' => 'Gamma',
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '222', 'name' => 'Bar', 'email' => 'bar@example.com', 'roles' => ['gamma']],
+            ],
+        ], 200),
+    ]);
+
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $result = $service->syncUsers($app);
+
+    $user = App\Models\User::where('nip', '222')->first();
+    expect($user)->not->toBeNull();
+
+    // new profile should exist and contain the role
+    $profile = App\Domain\Iam\Models\AccessProfile::where('slug', 'auto_xyz_gamma')->first();
+    expect($profile)->not->toBeNull();
+    expect($profile->roles->pluck('id')->toArray())->toContain($role->id);
+
+    // user attached to that profile
+    expect($user->accessProfiles->pluck('id')->toArray())->toContain($profile->id);
 });

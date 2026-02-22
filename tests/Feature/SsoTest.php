@@ -1,6 +1,7 @@
 <?php
 
 use  App\Domain\Iam\Models\Application;;
+
 use App\Models\User;
 use App\Services\Sso\TokenService;
 use Illuminate\Support\Carbon;
@@ -38,6 +39,32 @@ it('issues a token and redirects to the client callback', function (): void {
     expect($claims['email'])->toEqual($user->email);
     expect($claims['app'])->toEqual($application->app_key);
     expect($claims['iss'])->toEqual('testing-issuer');
+});
+
+it('does not fail when user has a direct role for the application', function (): void {
+    $user = User::factory()->create();
+    $application = Application::factory()->create([
+        'callback_url' => 'http://127.0.0.1:8080/callback',
+    ]);
+
+    // create a role and attach it with pivot application_id
+    $role = \App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $application->id,
+        'slug' => 'tester',
+        'name' => 'Tester Role',
+    ]);
+
+    $user->applicationRoles()->attach($role->id, ['application_id' => $application->id]);
+
+    /** @var TokenService $tokens */
+    $tokens = app(TokenService::class);
+    $token = $tokens->issue($user, $application);
+
+    // verifying the token should succeed and include our role
+    $claims = $tokens->verify($token);
+
+    expect($claims['roles'])->toHaveCount(1);
+    expect($claims['roles'][0]['slug'])->toEqual('tester');
 });
 
 it('verifies a valid token via the API endpoint', function (): void {
