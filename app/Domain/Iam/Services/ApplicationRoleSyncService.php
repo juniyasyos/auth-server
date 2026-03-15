@@ -101,7 +101,7 @@ class ApplicationRoleSyncService
             } elseif (config('iam.backchannel_method', 'jwt') === 'jwt') {
                 $token = app(JWTTokenService::class)->generateBackchannelToken($application);
                 $response = Http::withToken($token)
-                    ->timeout(10)
+                    ->timeout(50)
                     ->get($syncUrl);
             } else {
                 $secret = config('sso.secret', env('SSO_SECRET', ''));
@@ -109,7 +109,7 @@ class ApplicationRoleSyncService
                 $header = config('sso.backchannel.signature_header', 'IAM-Signature');
 
                 $response = Http::withHeaders([$header => $signature])
-                    ->timeout(10)
+                    ->timeout(50)
                     ->get($syncUrl);
             }
 
