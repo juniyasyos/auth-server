@@ -1,5 +1,8 @@
-/* Base orchestrator untuk theme Filament v4 */
+html {
+    font-size: 70%;
+}
 
+/* Base orchestrator untuk theme Filament v4 */
 @import './tokens.css';
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
@@ -16,4 +19,3 @@
 @import './utilities.css';
 @import './responsive.tablet.css';
 @import './responsive.mobile.css';
-

@@ -57,7 +57,7 @@ class UsersTable
                 TextColumn::make('accessible_apps')
                     ->label('Aplikasi')
                     ->getStateUsing(function (User $record): ?string {
-                        $apps = $record->accessibleApps() ?? [];
+                        $apps = $record->accessProfiles()->pluck('name')->toArray() ?? [];
 
                         if (empty($apps)) {
                             return null;
