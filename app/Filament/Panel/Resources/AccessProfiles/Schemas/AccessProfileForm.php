@@ -3,14 +3,13 @@
 namespace App\Filament\Panel\Resources\AccessProfiles\Schemas;
 
 use App\Domain\Iam\Models\ApplicationRole;
+use App\Rules\UniqueRolePerApplication;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -89,7 +88,8 @@ class AccessProfileForm
                                     ->default([])
                                     ->searchable()
                                     ->preload()
-                                    ->helperText('Choose a combination of application + role pairs to include in this bundle.')
+                                    ->helperText('Pilih maksimal satu role per aplikasi. Jika banyak role dari aplikasi yang sama diperlukan, buat profil terpisah atau hapus salah satu setiap kali.')
+                                    ->rules([new UniqueRolePerApplication()])
                                     ->columnSpanFull(),
                             ]),
 

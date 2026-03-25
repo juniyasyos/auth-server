@@ -36,9 +36,11 @@ class EditAccessProfile extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $this->tempRoleIds = $data['role_ids'] ?? [];
+        $roleIds = isset($data['roles']) ? (array) $data['roles'] : (isset($data['role_ids']) ? (array) $data['role_ids'] : []);
 
-        unset($data['role_ids']);
+        $this->tempRoleIds = array_values(array_unique(array_filter($roleIds)));
+
+        unset($data['roles'], $data['role_ids']);
 
         return $data;
     }
