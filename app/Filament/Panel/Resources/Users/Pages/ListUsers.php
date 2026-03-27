@@ -66,6 +66,12 @@ class ListUsers extends ListRecords
                         return;
                     }
 
+                    dd([
+                        'application_ids' => $applicationIds,
+                        'profile_ids' => $profileIds,
+                        'sync_mode' => $data['sync_mode'] ?? 'auto',
+                    ]);
+
                     SyncApplicationUsers::dispatch($applicationIds, $profileIds);
 
                     Notification::make()

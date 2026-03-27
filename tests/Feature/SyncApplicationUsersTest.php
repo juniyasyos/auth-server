@@ -105,6 +105,68 @@ it('syncs a client user by attaching the appropriate access profiles', function 
     expect($user->applicationRoles)->toBeEmpty();
 });
 
+it('syncs roles for an already-existing user during sync', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'abc',
+    ]);
+
+    $role = ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'alpha',
+        'name' => 'Alpha',
+    ]);
+
+    $profile = AccessProfile::factory()->create();
+    $profile->roles()->attach($role->id);
+
+    $existingUser = User::factory()->create(['nip' => '505', 'name' => 'Existing User']);
+
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '505', 'name' => 'Existing User', 'email' => 'existing@example.com', 'roles' => ['alpha']],
+            ],
+        ], 200),
+    ]);
+
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $service->syncUsers($app);
+
+    $fresh = $existingUser->fresh();
+    expect($fresh->accessProfiles->pluck('id')->toArray())->toContain($profile->id);
+});
+
+it('attaches profile when profile slug matches incoming role slug', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'abc',
+    ]);
+
+    $role = ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'alpha',
+        'name' => 'Alpha',
+    ]);
+
+    $profile = AccessProfile::factory()->create(['slug' => 'alpha']);
+    $profile->roles()->attach($role->id);
+
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '224', 'name' => 'Profile Match', 'email' => 'profile.match@example.com', 'roles' => ['alpha']],
+            ],
+        ], 200),
+    ]);
+
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $service->syncUsers($app);
+
+    $fresh = User::where('nip', '224')->first();
+    expect($fresh)->not->toBeNull();
+    expect($fresh->accessProfiles->pluck('id')->toArray())->toContain($profile->id);
+});
 
 // job should only attach profiles that were selected in the modal
 it('job respects chosen bundles and ignores the rest', function () {
@@ -259,7 +321,7 @@ it('includes users with a direct role when computing iam_users (no SQL ambiguity
     expect(collect($iamUsers)->pluck('id')->toArray())->toContain($user->id);
 });
 
-it('creates an access profile automatically when none exist for a role', function () {
+it('does not create a new access profile if none exist for a role', function () {
     $app = Application::factory()->create([
         'callback_url' => 'http://client.test',
         'app_key' => 'xyz',
@@ -280,16 +342,53 @@ it('creates an access profile automatically when none exist for a role', functio
     ]);
 
     $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
-    $result = $service->syncUsers($app);
+    $service->syncUsers($app);
 
     $user = User::where('nip', '222')->first();
     expect($user)->not->toBeNull();
 
-    // new profile should exist and contain the role
-    $profile = AccessProfile::where('slug', 'auto_xyz_gamma')->first();
-    expect($profile)->not->toBeNull();
-    expect($profile->roles->pluck('id')->toArray())->toContain($role->id);
+    // no profile should be created automatically
+    $profile = AccessProfile::where('slug', 'xyz_gamma')->first();
+    expect($profile)->toBeNull();
 
-    // user attached to that profile
-    expect($user->accessProfiles->pluck('id')->toArray())->toContain($profile->id);
+    // user should not be attached to any profile for that role
+    expect($user->accessProfiles->pluck('id')->toArray())->toBeEmpty();
+});
+
+it('reuses existing auto profile and updates it instead of duplicating', function () {
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'xyz',
+    ]);
+
+    $role = App\Domain\Iam\Models\ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'gamma',
+        'name' => 'Gamma',
+    ]);
+
+    $existingProfile = AccessProfile::create([
+        'slug' => 'xyz_gamma',
+        'name' => 'gamma (existing)',
+        'description' => 'Existing profile',
+        'is_system' => false,
+        'is_active' => true,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            'users' => [
+                ['nip' => '222', 'name' => 'Bar', 'email' => 'bar@example.com', 'roles' => ['gamma']],
+            ],
+        ], 200),
+    ]);
+
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $service->syncUsers($app);
+
+    $profile = AccessProfile::where('slug', 'xyz_gamma')->get();
+    expect($profile->count())->toEqual(1);
+
+    $existingProfile->refresh();
+    expect($existingProfile->roles->pluck('id')->toArray())->toContain($role->id);
 });

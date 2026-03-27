@@ -181,7 +181,7 @@ class ApplicationsTable
                                 })
                                 ->pluck('id')
                                 ->toArray();
-
+                            
                             SyncApplicationUsers::dispatch($record, $profileIds);
                             Notification::make()
                                 ->title('User sync job queued')

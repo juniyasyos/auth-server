@@ -81,6 +81,13 @@ class SyncApplicationUsers implements ShouldQueue
 
     public function handle(): void
     {
+        Log::info('application_user_sync_started', [
+            'application_id' => $this->application?->id,
+            'application_ids' => $this->applicationIds,
+            'profile_ids' => $this->profileIds,
+            'sync_mode' => $this->syncMode,
+        ]);
+
         // determine which apps should be synced
         $appsQuery = Application::query();
 

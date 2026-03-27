@@ -168,11 +168,11 @@ class SsoLogger
     /**
      * Log successful login
      */
-    public function logLoginSuccess(int $userId, string $email, string $ipAddress, array $additionalContext = []): void
+    public function logLoginSuccess(int $userId, ?string $email, string $ipAddress, array $additionalContext = []): void
     {
         $context = array_merge([
             'user_id' => $userId,
-            'email' => $email,
+            'email' => $email ?? 'unknown',
             'ip_address' => $ipAddress,
             'login_time' => Carbon::now()->toIso8601String(),
         ], $additionalContext);

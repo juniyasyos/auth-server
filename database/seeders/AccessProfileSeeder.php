@@ -30,7 +30,7 @@ class AccessProfileSeeder extends Seeder
             ],
 
             [
-                'slug'        => 'pic_indikator',
+                'slug'        => 'validator_pic',
                 'name'        => 'Unit Kerja: PIC Indikator',
                 'description' => 'Berperan sebagai penanggung jawab indikator mutu pada unit kerja masing-masing, termasuk pemantauan, pelaporan, dan tindak lanjut capaian.',
                 'is_system'   => false,

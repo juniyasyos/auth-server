@@ -186,10 +186,10 @@ class UsersTable
             ])
             ->filtersFormColumns(3)
             ->recordActions([
-                ImpersonateTableAction::make()
-                    ->label('Impersonate')
-                    ->icon('heroicon-m-arrow-right-on-rectangle')
-                    ->visible(fn(User $record) => Auth::id() !== $record->id),
+                // ImpersonateTableAction::make()
+                //     ->label('Impersonate')
+                //     ->icon('heroicon-m-arrow-right-on-rectangle')
+                //     ->visible(fn(User $record) => Auth::id() !== $record->id),
                 RelationManagerAction::make()
                     ->label('Manage Role Bundles')
                     ->icon('heroicon-o-user-group')
