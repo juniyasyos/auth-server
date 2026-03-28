@@ -81,6 +81,7 @@
         ],
         "setup": [
             "@php artisan migrate:fresh --seed",
+            "@php artisan manage-unit-kerja:sync",
             "@php artisan optimize:clear"
         ]
     },

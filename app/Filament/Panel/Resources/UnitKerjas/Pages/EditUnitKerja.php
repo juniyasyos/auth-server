@@ -2,12 +2,15 @@
 
 namespace App\Filament\Panel\Resources\UnitKerjas\Pages;
 
+use App\Filament\Panel\Resources\UnitKerjas\RelationManagers\UsersRelationUnitKerjaManager;
 use App\Filament\Panel\Resources\UnitKerjas\UnitKerjaResource;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Guava\FilamentModalRelationManagers\Actions\RelationManagerAction;
 use Juniyasyos\ManageUnitKerja\Filament\Resources\UnitKerjaResource\Pages\EditUnitKerja as PagesEditUnitKerja;
 
 class EditUnitKerja extends PagesEditUnitKerja
@@ -17,10 +20,24 @@ class EditUnitKerja extends PagesEditUnitKerja
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
-            DeleteAction::make(),
-            ForceDeleteAction::make(),
-            RestoreAction::make(),
+            RelationManagerAction::make('users')
+                ->slideOver()
+                ->icon('heroicon-o-user')
+                ->record($this->getRecord())
+                ->label(__('filament-forms::unit-kerja.actions.attach'))
+                ->relationManager(UsersRelationUnitKerjaManager::make()),
+
+            ActionGroup::make([
+                ViewAction::make()
+                    ->icon('heroicon-o-eye')
+                    ->openUrlInNewTab(),
+                DeleteAction::make(),
+                ForceDeleteAction::make(),
+                RestoreAction::make(),
+            ])
+            ->label('Aksi')
+            ->icon('heroicon-o-ellipsis-vertical')
+            ->button(),
         ];
     }
 }

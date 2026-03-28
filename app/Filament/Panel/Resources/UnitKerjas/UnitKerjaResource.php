@@ -18,9 +18,24 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Juniyasyos\ManageUnitKerja\Filament\Resources\UnitKerjaResource as ResourcesUnitKerjaResource;
+use Juniyasyos\ManageUnitKerja\Filament\Resources\UnitKerjaResource\Tables\UnitKerjaResourceTable;
 
 class UnitKerjaResource extends ResourcesUnitKerjaResource
 {
+    public static function form(Schema $schema): Schema
+    {
+        return UnitKerjaForm::configure($schema);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns(UnitKerjaResourceTable::columns())
+            ->filters(UnitKerjaResourceTable::filters())
+            ->actions(UnitKerjaResourceTable::actions())
+            ->bulkActions(UnitKerjaResourceTable::bulkActions());
+    }
+
     public static function getPages(): array
     {
         return [

