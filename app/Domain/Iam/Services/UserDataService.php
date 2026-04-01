@@ -112,11 +112,20 @@ class UserDataService
             ->groupBy('application.app_key')
             ->map(function ($appRoles, $appKey) {
                 $firstRole = $appRoles->first();
+                $app = $firstRole->application;
+                $primaryUrl = is_array($app->redirect_uris) && !empty($app->redirect_uris)
+                    ? $app->redirect_uris[0]
+                    : null;
+
                 return [
+                    'id' => $app->id,
                     'app_key' => $appKey,
-                    'name' => $firstRole->application->name,
-                    'description' => $firstRole->application->description,
-                    'enabled' => $firstRole->application->enabled,
+                    'name' => $app->name,
+                    'description' => $app->description,
+                    'enabled' => $app->enabled,
+                    'logo_url' => $app->logo_url,
+                    'app_url' => $primaryUrl,
+                    'redirect_uris' => $app->redirect_uris ?? [],
                     'roles' => $appRoles->map(fn($role) => [
                         'id' => $role->id,
                         'slug' => $role->slug,

@@ -3,6 +3,7 @@
 namespace App\Filament\Panel\Resources\UnitKerjas\RelationManagers;
 
 use App\Models\User;
+use App\Observers\UserObserver;
 use Filament\Actions\AttachAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DetachAction;
@@ -27,7 +28,6 @@ class UsersRelationUnitKerjaManager extends RelationManagersUsersRelationManager
             ->columns([
                 Split::make([
                     ImageColumn::make('avatar_url')
-                        ->searchable()
                         ->circular()
                         ->grow(false)
                         ->getStateUsing(fn($record) => $record->avatar_url ?: "https://ui-avatars.com/api/?name=" . urlencode($record->name)),
@@ -72,15 +72,39 @@ class UsersRelationUnitKerjaManager extends RelationManagersUsersRelationManager
                     ])
                     ->attachAnother(false)
                     ->preloadRecordSelect()
-                    ->recordSelectSearchColumns(['name']),
+                    ->recordSelectSearchColumns(['name'])
+                    ->after(function ($record, array $data) {
+                        $user = $record instanceof User
+                            ? $record
+                            : User::find($data['recordId'] ?? null);
+
+                        if (! $user instanceof User) {
+                            return;
+                        }
+
+                        app(UserObserver::class)->relationshipChanged($user, 'unit_kerja:attached');
+                    }),
             ])
             ->actions([
                 DetachAction::make()
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->after(function ($record) {
+                        if (! $record instanceof User) {
+                            return;
+                        }
+
+                        app(UserObserver::class)->relationshipChanged($record, 'unit_kerja:detached');
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DetachBulkAction::make(),
+                    DetachBulkAction::make()
+                        ->after(function ($records) {
+                            collect($records)
+                                ->filter(fn($record) => $record instanceof User)
+                                ->each(fn(User $record) => app(UserObserver::class)
+                                    ->relationshipChanged($record, 'unit_kerja:detached_bulk'));
+                        }),
                 ]),
             ]);
     }

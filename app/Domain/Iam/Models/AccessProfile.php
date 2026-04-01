@@ -50,11 +50,21 @@ class AccessProfile extends Model
      */
     public function roles()
     {
-        return $this->belongsToMany(ApplicationRole::class,
+        return $this->belongsToMany(
+            ApplicationRole::class,
             'access_profile_role_iam_map',
             'access_profile_id',
-            'role_id')
+            'role_id'
+        )
             ->withTimestamps();
+    }
+
+    /**
+     * Resolve the model factory.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\AccessProfileFactory::new();
     }
 
     /**
@@ -66,5 +76,4 @@ class AccessProfile extends Model
             ->withPivot('assigned_by')
             ->withTimestamps();
     }
-
 }

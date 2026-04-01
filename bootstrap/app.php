@@ -49,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'iam.inject' => \App\Http\Middleware\InjectIAMUserContext::class,
             'iam.permission' => \App\Http\Middleware\CheckIAMPermission::class,
             'iam.role' => \App\Http\Middleware\CheckIAMRole::class,
+            'sso.jwt' => \App\Http\Middleware\VerifySsoJwtApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -17,8 +17,8 @@ class JWTTokenService
 
     public function __construct()
     {
-        $this->secretKey = config('app.key');
-        $this->issuer = config('app.url');
+        $this->secretKey = config('iam.jwt_secret', config('app.key'));
+        $this->issuer = config('iam.issuer', config('app.url'));
     }
 
     /**

@@ -14,6 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UsersRelationManager extends RelationManager
 {
@@ -47,7 +48,7 @@ class UsersRelationManager extends RelationManager
                     ->falseColor('danger'),
                 TextColumn::make('pivot.assigned_by')
                     ->label('Assigned By')
-                    ->getStateUsing(fn ($record) => $record->pivot->assigned_by ? User::find($record->pivot->assigned_by)?->name : 'System')
+                    ->getStateUsing(fn($record) => $record->pivot->assigned_by ? User::find($record->pivot->assigned_by)?->name : 'System')
                     ->toggleable(),
                 TextColumn::make('pivot.created_at')
                     ->label('Assigned At')
@@ -61,7 +62,7 @@ class UsersRelationManager extends RelationManager
                     ->modalHeading('Assign User to Profile')
                     ->modalDescription('Select users to assign this access profile.')
                     ->preloadRecordSelect()
-                    ->schema(fn (AttachAction $action): array => [
+                    ->schema(fn(AttachAction $action): array => [
                         Select::make('recordId')
                             ->label('User')
                             ->options(User::query()->where('active', true)->pluck('name', 'id'))
@@ -86,13 +87,62 @@ class UsersRelationManager extends RelationManager
                     ->label('Remove')
                     ->requiresConfirmation()
                     ->modalHeading('Remove user from profile')
-                    ->modalDescription('Are you sure you want to remove this user from the access profile?'),
+                    ->modalDescription('Are you sure you want to remove this user from the access profile?')
+                    ->after(function ($record) {
+                        if (! ($record instanceof User)) {
+                            return;
+                        }
+
+                        $profile = $this->getOwnerRecord();
+                        $applications = $profile->roles
+                            ->pluck('application')
+                            ->filter()
+                            ->unique('id')
+                            ->values()
+                            ->all();
+
+                        Log::info('iam.access_profile.detach.user', [
+                            'profile_id' => $profile->id,
+                            'profile_slug' => $profile->slug,
+                            'user_id' => $record->id,
+                            'application_ids' => collect($applications)->pluck('id')->values()->all(),
+                            'application_keys' => collect($applications)->pluck('app_key')->values()->all(),
+                        ]);
+
+                        app(\App\Domain\Iam\Services\BackchannelLogoutService::class)->notifyUser($record, $applications, true);
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DetachBulkAction::make()
                         ->label('Remove Selected')
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->after(function ($records) {
+                            $profile = $this->getOwnerRecord();
+                            $applications = $profile->roles
+                                ->pluck('application')
+                                ->filter()
+                                ->unique('id')
+                                ->values()
+                                ->all();
+
+                            foreach ($records as $record) {
+                                if (! ($record instanceof User)) {
+                                    continue;
+                                }
+
+                                Log::info('iam.access_profile.detach.bulk.user', [
+                                    'profile_id' => $profile->id,
+                                    'profile_slug' => $profile->slug,
+                                    'user_id' => $record->id,
+                                    'application_ids' => collect($applications)->pluck('id')->values()->all(),
+                                    'application_keys' => collect($applications)->pluck('app_key')->values()->all(),
+                                ]);
+
+                                app(\App\Domain\Iam\Services\BackchannelLogoutService::class)
+                                    ->notifyUser($record, $applications, true);
+                            }
+                        }),
                 ]),
             ])
             ->emptyStateHeading('No users assigned')

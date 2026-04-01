@@ -115,13 +115,50 @@ class AccessProfilesRelationManager extends RelationManager
                     ->label('Remove')
                     ->requiresConfirmation()
                     ->modalHeading('Remove profile from user')
-                    ->modalDescription('Are you sure you want to remove this access profile? The user will lose all associated application roles.'),
+                    ->modalDescription('Are you sure you want to remove this access profile? The user will lose all associated application roles.')
+                    ->after(function ($record) {
+                        if (! ($record instanceof \App\Domain\Iam\Models\AccessProfile)) {
+                            return;
+                        }
+
+                        $user = $this->getOwnerRecord();
+                        if (! ($user instanceof \App\Models\User)) {
+                            return;
+                        }
+
+                        $applications = $record->roles
+                            ->pluck('application')
+                            ->filter()
+                            ->unique('id')
+                            ->values()
+                            ->all();
+
+                        app(\App\Domain\Iam\Services\BackchannelLogoutService::class)
+                            ->notifyUser($user, $applications, true);
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DetachBulkAction::make()
                         ->label('Remove Selected')
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->after(function ($records) {
+                            $user = $this->getOwnerRecord();
+                            if (! $user instanceof \App\Models\User) {
+                                return;
+                            }
+
+                            $applications = collect($records)
+                                ->filter(fn($record) => $record instanceof \App\Domain\Iam\Models\AccessProfile)
+                                ->flatMap(fn($profile) => $profile->roles->pluck('application'))
+                                ->filter()
+                                ->unique('id')
+                                ->values()
+                                ->all();
+
+                            app(\App\Domain\Iam\Services\BackchannelLogoutService::class)
+                                ->notifyUser($user, $applications, true);
+                        }),
                 ]),
             ])
             ->emptyStateHeading('No access profiles assigned')

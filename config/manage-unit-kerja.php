@@ -17,10 +17,10 @@ return [
 
     'center_application' => env('MANAGE_UNIT_KERJA_CENTER_APPLICATION', true),
 
-    'app_center_url' => env('MANAGE_UNIT_KERJA_APP_CENTER_URL', 'http://127.0.0.1:8088'),
+    'app_center_url' => env('MANAGE_UNIT_KERJA_APP_CENTER_URL', null),
 
     'sync' => [
-        'active' => env('MANAGE_UNIT_KERJA_SYNC_ACTIVE', true),
+        'active' => env('MANAGE_UNIT_KERJA_SYNC_ACTIVE', false),
     ],
 
     'navigation_sort' => 0,

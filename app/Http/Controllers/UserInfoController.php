@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Iam\Models\Application;
 use App\Domain\Iam\Services\UserDataService;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -52,7 +53,7 @@ class UserInfoController extends Controller
     }
 
     /**
-     * Get the currently authenticated user\'s accessible applications.
+     * Get the currently authenticated user\'s accessible applications with metadata.
      *
      * @param Request $request
      * @return JsonResponse
@@ -67,13 +68,211 @@ class UserInfoController extends Controller
             includeProfiles: false
         );
 
+        // Enrich applications with complete metadata
+        $enrichedApps = collect($userData['applications'] ?? [])
+            ->map(function ($app) {
+                return array_merge($app, [
+                    'roles_count' => count($app['roles'] ?? []),
+                    'status' => $app['enabled'] ? 'active' : 'inactive',
+                    'has_logo' => !empty($app['logo_url']),
+                    'has_primary_url' => !empty($app['app_url']),
+                    'urls' => [
+                        'primary' => $app['app_url'],
+                        'all_redirects' => $app['redirect_uris'] ?? [],
+                    ],
+                ]);
+            })
+            ->values()
+            ->toArray();
+
+        $enrichedApps = $this->prependIamHomeApplication($enrichedApps, false);
+
         return response()->json([
             'sub' => (string) $user->id,
             'user_id' => $user->id,
-            'applications' => $userData['applications'] ?? [],
+            'total_accessible_apps' => count($enrichedApps),
+            'applications' => $enrichedApps,
             'accessible_apps' => $userData['accessible_apps'] ?? [],
             'timestamp' => now()->toIso8601String(),
         ]);
+    }
+
+    /**
+     * Get detailed information about user's accessible applications.
+     * Includes metadata, logos, URLs, and complete role information.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function applicationsDetail(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $userData = $this->userDataService->getUserData(
+            user: $user,
+            application: null,
+            includeProfiles: true
+        );
+
+        // Get all accessible apps from user's effective roles
+        $accessibleAppKeys = $userData['accessible_apps'] ?? [];
+
+        // Fetch full app details including creation metadata
+        $appDetails = Application::whereIn('app_key', $accessibleAppKeys)
+            ->get()
+            ->map(function ($app) use ($userData, $user) {
+                // Find corresponding application data from userData
+                $appData = collect($userData['applications'] ?? [])
+                    ->firstWhere('app_key', $app->app_key) ?? [];
+
+                return [
+                    'id' => $app->id,
+                    'app_key' => $app->app_key,
+                    'name' => $app->name,
+                    'description' => $app->description,
+                    'status' => $app->enabled ? 'active' : 'inactive',
+                    'metadata' => [
+                        'logo' => [
+                            'url' => $app->logo_url,
+                            'available' => !empty($app->logo_url),
+                        ],
+                        'urls' => [
+                            'primary' => is_array($app->redirect_uris) && !empty($app->redirect_uris)
+                                ? $app->redirect_uris[0]
+                                : null,
+                            'all_redirects' => $app->redirect_uris ?? [],
+                            'callback' => $app->callback_url,
+                            'backchannel' => $app->backchannel_url,
+                        ],
+                        'created_at' => $app->created_at?->toIso8601String(),
+                        'updated_at' => $app->updated_at?->toIso8601String(),
+                    ],
+                    'roles' => $appData['roles'] ?? [],
+                    'roles_count' => count($appData['roles'] ?? []),
+                    'access_profiles_using_this_app' => $this->getProfilesUsingApp($user, $app->id),
+                ];
+            })
+            ->sortBy('name')
+            ->values()
+            ->toArray();
+
+        $appDetails = $this->prependIamHomeApplication($appDetails, true);
+
+        return response()->json([
+            'sub' => (string) $user->id,
+            'user_id' => $user->id,
+            'total_apps' => count($appDetails),
+            'applications' => $appDetails,
+            'user_profiles' => $userData['access_profiles'] ?? [],
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    private function prependIamHomeApplication(array $applications, bool $detailed): array
+    {
+        $homeConfig = config('iam.home_app', []);
+        $enabled = (bool) ($homeConfig['enabled'] ?? true);
+
+        if (!$enabled) {
+            return $applications;
+        }
+
+        $homeApp = $this->buildIamHomeApplication($detailed);
+
+        if (empty($homeApp['app_key'])) {
+            return $applications;
+        }
+
+        $filtered = collect($applications)
+            ->reject(fn($app) => ($app['app_key'] ?? null) === $homeApp['app_key'])
+            ->values()
+            ->toArray();
+
+        array_unshift($filtered, $homeApp);
+
+        return $filtered;
+    }
+
+    private function buildIamHomeApplication(bool $detailed): array
+    {
+        $homeConfig = config('iam.home_app', []);
+
+        $appKey = (string) ($homeConfig['app_key'] ?? 'iam-home');
+        $name = (string) ($homeConfig['name'] ?? 'IAM Home');
+        $description = (string) ($homeConfig['description'] ?? 'Portal utama IAM');
+        $url = (string) ($homeConfig['url'] ?? 'http://127.0.0.1:8010/');
+        $logoUrl = $homeConfig['logo_url'] ?? null;
+
+        if ($detailed) {
+            return [
+                'id' => null,
+                'app_key' => $appKey,
+                'name' => $name,
+                'description' => $description,
+                'status' => 'active',
+                'metadata' => [
+                    'logo' => [
+                        'url' => $logoUrl,
+                        'available' => !empty($logoUrl),
+                    ],
+                    'urls' => [
+                        'primary' => $url,
+                        'all_redirects' => [$url],
+                        'callback' => null,
+                        'backchannel' => null,
+                    ],
+                    'created_at' => null,
+                    'updated_at' => null,
+                ],
+                'roles' => [],
+                'roles_count' => 0,
+                'access_profiles_using_this_app' => [],
+            ];
+        }
+
+        return [
+            'id' => null,
+            'app_key' => $appKey,
+            'name' => $name,
+            'description' => $description,
+            'enabled' => true,
+            'logo_url' => $logoUrl,
+            'app_url' => $url,
+            'redirect_uris' => [$url],
+            'roles' => [],
+            'roles_count' => 0,
+            'status' => 'active',
+            'has_logo' => !empty($logoUrl),
+            'has_primary_url' => true,
+            'urls' => [
+                'primary' => $url,
+                'all_redirects' => [$url],
+            ],
+        ];
+    }
+
+    /**
+     * Get access profiles that provide access to a specific application.
+     * 
+     * @param User $user
+     * @param int $appId
+     * @return array
+     */
+    private function getProfilesUsingApp(User $user, int $appId): array
+    {
+        return $user->accessProfiles()
+            ->with('roles')
+            ->get()
+            ->filter(function ($profile) use ($appId) {
+                return $profile->roles->contains('application_id', $appId);
+            })
+            ->map(fn($profile) => [
+                'id' => $profile->id,
+                'name' => $profile->name,
+                'slug' => $profile->slug,
+            ])
+            ->values()
+            ->toArray();
     }
 
     public function accessProfiles(Request $request): JsonResponse

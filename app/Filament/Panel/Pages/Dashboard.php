@@ -2,9 +2,11 @@
 
 namespace App\Filament\Panel\Pages;
 
+use App\Filament\Panel\Widgets\AccessProfilesChart;
+use App\Filament\Panel\Widgets\ProfileRoleConfigurationMap;
 use App\Filament\Panel\Widgets\RecentActivities;
-use App\Filament\Panel\Widgets\RolesDistribution;
 use App\Filament\Panel\Widgets\StatsOverview;
+use App\Filament\Panel\Widgets\UserAssignmentCoverageStatus;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -20,7 +22,9 @@ class Dashboard extends BaseDashboard
     {
         return [
             StatsOverview::class,
-            RolesDistribution::class,
+            UserAssignmentCoverageStatus::class,
+            ProfileRoleConfigurationMap::class,
+            AccessProfilesChart::class,
             RecentActivities::class,
         ];
     }

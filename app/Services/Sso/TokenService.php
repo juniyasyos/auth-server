@@ -42,7 +42,8 @@ class TokenService
 
             // Enforce per-application role assignment.
             // Users without roles should not get a token for this application.
-            if (empty($roles) && ! $user->isIAMAdmin()) {
+            // IAM admin users are treated the same as others for app-level access.
+            if (empty($roles)) {
                 $this->logger->logSecurity('token_issue_denied_no_roles', [
                     'app_key' => $application->app_key,
                     'user_id' => $user->getAuthIdentifier(),

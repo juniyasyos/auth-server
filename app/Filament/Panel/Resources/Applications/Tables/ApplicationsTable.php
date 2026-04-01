@@ -37,7 +37,7 @@ class ApplicationsTable
                     ->searchable()
                     ->sortable()
                     ->wrap()
-                    ->description(fn($record) => dd($record)),
+                    ->description(fn($record) => $record->description),
                 TextColumn::make('app_key')
                     ->label('App Key')
                     ->searchable()

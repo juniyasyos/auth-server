@@ -10,6 +10,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -77,7 +79,28 @@ class AccessProfileForm
                                     ->relationship(
                                         name: 'roles',
                                         titleAttribute: 'name',
-                                        modifyQueryUsing: fn(Builder $query) => $query->with('application'),
+                                        modifyQueryUsing: function (Builder $query, Get $get) {
+                                            $query->with('application');
+
+                                            // Filter out roles dari aplikasi yang sudah dipilih, tapi tetap sertakan role yang sudah dipilih dalam state
+                                            $selectedRoles = $get('roles') ?? [];
+                                            if (!empty($selectedRoles)) {
+                                                $selectedApplicationIds = ApplicationRole::query()
+                                                    ->whereIn('id', $selectedRoles)
+                                                    ->pluck('application_id')
+                                                    ->toArray();
+
+                                                if (!empty($selectedApplicationIds)) {
+                                                    $query->where(function (Builder $subQuery) use ($selectedRoles, $selectedApplicationIds) {
+                                                        $subQuery
+                                                            ->whereIn('id', $selectedRoles)
+                                                            ->orWhereNotIn('application_id', $selectedApplicationIds);
+                                                    });
+                                                }
+                                            }
+
+                                            return $query;
+                                        },
                                     )
                                     ->getOptionLabelFromRecordUsing(
                                         fn(ApplicationRole $record): string => ($record->application?->name ?? 'App ID: ' . $record->application_id)
@@ -88,7 +111,7 @@ class AccessProfileForm
                                     ->default([])
                                     ->searchable()
                                     ->preload()
-                                    ->helperText('Pilih maksimal satu role per aplikasi. Jika banyak role dari aplikasi yang sama diperlukan, buat profil terpisah atau hapus salah satu setiap kali.')
+                                    ->helperText('Pilih maksimal satu role per aplikasi.')
                                     ->rules([new UniqueRolePerApplication()])
                                     ->columnSpanFull(),
                             ]),

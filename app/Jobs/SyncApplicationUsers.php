@@ -50,6 +50,11 @@ class SyncApplicationUsers implements ShouldQueue
     public array $manualRoleMapping = [];
 
     /**
+     * Optionally sync only a specific user after changes inside IAM.
+     */
+    public ?int $userId = null;
+
+    /**
      * Accept either an array of profile IDs or an Application followed by
      * profile IDs, plus optionally application IDs.
      *
@@ -59,8 +64,10 @@ class SyncApplicationUsers implements ShouldQueue
      *   SyncApplicationUsers::dispatch($ids);            // role-bundle filter all apps
      *   SyncApplicationUsers::dispatch($appIds, $profileIds); // selected apps + bundles
      */
-    public function __construct(array|Application $first = [], array $profileIds = [], array $applicationIds = [])
+    public function __construct(array|Application $first = [], array $profileIds = [], array $applicationIds = [], ?int $userId = null)
     {
+        $this->userId = $userId;
+
         if ($first instanceof Application) {
             $this->application = $first;
             $this->profileIds = $profileIds;
@@ -118,7 +125,7 @@ class SyncApplicationUsers implements ShouldQueue
             );
 
             try {
-                $result = $service->syncUsers($app);
+                $result = $service->syncUsers($app, $this->userId);
 
                 Log::info('application_user_sync_completed', [
                     'application_id' => $app->id,

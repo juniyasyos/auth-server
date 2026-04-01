@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\CheckClientConnectivity;
 use App\Console\Commands\SyncSiimutClientUsers;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -14,6 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         SyncSiimutClientUsers::class,
+        CheckClientConnectivity::class,
+        \App\Console\Commands\ForcePushUsersToClient::class,
     ];
 
     /**
@@ -29,7 +32,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

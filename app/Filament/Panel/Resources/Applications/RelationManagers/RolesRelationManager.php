@@ -83,22 +83,45 @@ class RolesRelationManager extends RelationManager
                         $service = new ApplicationRoleSyncService();
                         $result = $service->syncRoles($this->getOwnerRecord());
 
-                        if (!$result['success']) {
+                        if (empty($result['success'])) {
                             Notification::make()
                                 ->title('Sync Failed')
-                                ->body($result['error'])
+                                ->body($result['error'] ?? 'Unknown error')
                                 ->danger()
                                 ->send();
                             return;
                         }
 
-                        $message = $result['message'] . "\n\n";
+                        $bodyMessage = $result['message'] ?? ($result['error'] ?? 'Sync completed');
+                        $message = $bodyMessage . "\n\n";
                         $message .= "Mode: {$mode} (create on client: " . ($allowCreate ? 'yes' : 'no') . ")\n";
 
-                        $comparison = $result['comparison'];
-                        $inSync = count($comparison['in_sync']);
-                        $missing = count($comparison['missing_in_client']);
-                        $extra = count($comparison['extra_in_client']);
+                        $comparison = $result['comparison'] ?? null;
+                        if ($comparison && is_array($comparison)) {
+                            $inSync = count($comparison['in_sync'] ?? []);
+                            $missing = count($comparison['missing_in_client'] ?? []);
+                            $extra = count($comparison['extra_in_client'] ?? []);
+
+                            $message .= "Current Status:\n";
+                            $message .= "✓ In Sync: {$inSync} role(s)\n";
+                            if ($missing > 0) {
+                                $message .= "⚠ Missing in Client: {$missing} role(s)\n";
+                            }
+                            if ($extra > 0) {
+                                $message .= "ℹ Extra in Client: {$extra} role(s)";
+                            }
+                        } else {
+                            $inSync = 0;
+                            $missing = 0;
+                            $extra = 0;
+
+                            $message .= "Current Status: comparison data not available\n";
+                        }
+
+                        //Ensure defaults in case comparison block is missing.
+                        $inSync = $inSync ?? 0;
+                        $missing = $missing ?? 0;
+                        $extra = $extra ?? 0;
 
                         $message .= "Current Status:\n";
                         $message .= "✓ In Sync: {$inSync} role(s)\n";

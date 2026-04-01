@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Observers\UserApplicationRoleObserver;
+use App\Observers\UserObserver;
 use App\Services\AppRegistry;
 use App\Services\Contracts\AppRegistryContract;
 use Illuminate\Contracts\Auth\Access\Gate;
@@ -26,5 +28,8 @@ class AppServiceProvider extends ServiceProvider
         $gate->define('viewPulse', function (User $user) {
             return true;
         });
+
+        User::observe(UserObserver::class);
+        \App\Domain\Iam\Models\UserApplicationRole::observe(UserApplicationRoleObserver::class);
     }
 }

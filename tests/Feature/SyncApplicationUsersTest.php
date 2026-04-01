@@ -280,7 +280,43 @@ it('does not remove existing bundles when client roles shrink', function () {
         ->toEqualCanonicalizing([$profile1->id, $profile2->id]);
 });
 
+it('pushes IAM users to client when user_sync_mode is push', function () {
+    config(['iam.user_sync_mode' => 'push']);
+
+    $app = Application::factory()->create([
+        'callback_url' => 'http://client.test',
+        'app_key' => 'abc',
+    ]);
+
+    $role = ApplicationRole::create([
+        'application_id' => $app->id,
+        'slug' => 'direct',
+        'name' => 'Direct Role',
+    ]);
+
+    $user = User::factory()->create(['nip' => '999', 'email' => 'push@example.com']);
+    $user->applicationRoles()->attach($role->id, ['application_id' => $app->id]);
+
+    Http::fake([
+        'http://client.test/api/iam/push-users*' => Http::response(['success' => true], 200),
+    ]);
+
+    $service = new ApplicationUserSyncService();
+    $result = $service->syncUsers($app);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['message'])->toBe('Push completed');
+
+    Http::assertSent(function ($request) use ($app) {
+        return $request->url() === 'http://client.test/api/iam/push-users?app_key=abc'
+            && $request->method() === 'POST'
+            && collect($request->data()['users'])->pluck('email')->contains('push@example.com');
+    });
+});
+
 it('includes users with a direct role when computing iam_users (no SQL ambiguity)', function () {
+    config(['iam.user_sync_mode' => 'push']);
+
     $app = Application::factory()->create([
         'callback_url' => 'http://client.test',
         'app_key' => 'xyz',
@@ -292,13 +328,19 @@ it('includes users with a direct role when computing iam_users (no SQL ambiguity
         'name' => 'Direct Role',
     ]);
 
-    $user = App\Models\User::factory()->create(['nip' => '999']);
+    $user = App\Models\User::factory()->create(['nip' => '999', 'email' => 'direct@example.com']);
     $user->applicationRoles()->attach($role->id, ['application_id' => $app->id]);
 
-    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
-    $iamUsers = $service->getIamUsers($app);
+    Http::fake([
+        'http://client.test/api/iam/push-users*' => Http::response(['success' => true], 200),
+    ]);
 
-    expect(collect($iamUsers)->pluck('id')->toArray())->toContain($user->id);
+    $service = new App\Domain\Iam\Services\ApplicationUserSyncService();
+    $result = $service->syncUsers($app);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['iam_users'])->toHaveCount(1);
+    expect(collect($result['iam_users'])->pluck('id')->toArray())->toContain($user->id);
 });
 
 it('does not create a new access profile if none exist for a role', function () {

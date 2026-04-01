@@ -141,7 +141,7 @@ class User extends Authenticatable
             return [];
         }
 
-        $roles = $this->applicationRoles()->with('application')->get();
+        $roles = $this->effectiveApplicationRoles()->with('application')->get();
 
         $grouped = [];
         foreach ($roles as $role) {
@@ -149,7 +149,9 @@ class User extends Authenticatable
             if (! isset($grouped[$appKey])) {
                 $grouped[$appKey] = [];
             }
-            $grouped[$appKey][] = $role->slug;
+            if (! in_array($role->name, $grouped[$appKey], true)) {
+                $grouped[$appKey][] = $role->name;
+            }
         }
 
         return $grouped;
@@ -167,10 +169,25 @@ class User extends Authenticatable
             return [];
         }
 
-        return $this->applicationRoles()
+        // include direct application roles + roles via access profiles
+        $appKeysFromRoles = $this->effectiveApplicationRoles()
             ->with('application')
             ->get()
             ->pluck('application.app_key')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $appKeysFromProfiles = $this->accessProfiles()
+            ->whereHas('roles.application')
+            ->with('roles.application')
+            ->get()
+            ->flatMap(fn($profile) => $profile->roles->map(fn($role) => $role->application->app_key))
+            ->unique()
+            ->values()
+            ->toArray();
+
+        return collect(array_merge($appKeysFromRoles, $appKeysFromProfiles))
             ->unique()
             ->values()
             ->toArray();
@@ -186,7 +203,7 @@ class User extends Authenticatable
         return $this->accessProfiles()
             ->where('is_active', true)
             ->whereHas('roles', function ($q) use ($application) {
-                $q->where('application_id', $application->id);
+                $q->where('iam_roles.application_id', $application->id);
             })
             ->exists();
     }

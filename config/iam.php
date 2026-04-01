@@ -4,6 +4,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | IAM Home Application (Default)
+    |--------------------------------------------------------------------------
+    |
+    | Default app entry injected in user applications response. This value is
+    | intended to point back to IAM home/dashboard.
+    |
+    */
+    'home_app' => [
+        'enabled' => env('IAM_HOME_APP_ENABLED', true),
+        'app_key' => env('IAM_HOME_APP_KEY', 'iam-home'),
+        'name' => env('IAM_HOME_APP_NAME', 'IAM Home'),
+        'description' => env('IAM_HOME_APP_DESCRIPTION', 'Portal utama IAM'),
+        'url' => env('IAM_HOME_URL', 'http://127.0.0.1:8010/'),
+        'logo_url' => env('IAM_HOME_APP_LOGO_URL', null),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | IAM Issuer
     |--------------------------------------------------------------------------
     |
@@ -37,6 +55,8 @@ return [
     |
     */
     'sso_secret' => env('IAM_SSO_SECRET', env('SSO_SECRET', env('APP_KEY'))),
+
+    'jwt_secret' => env('IAM_JWT_SECRET', env('APP_KEY')),
 
     /*
     |--------------------------------------------------------------------------
@@ -79,7 +99,7 @@ return [
     */
     'backchannel_verify' => env('IAM_BACKCHANNEL_VERIFY', true),
 
-    'backchannel_method' => env('IAM_BACKCHANNEL_METHOD', 'hmac'),
+    'backchannel_method' => env('IAM_BACKCHANNEL_METHOD', 'jwt'),
 
 
     /*
@@ -150,7 +170,39 @@ return [
     | * pull: IAM pulls roles from client and updates IAM (default)
     | * push: IAM pushes roles to client
     */
-    'role_sync_mode' => env('IAM_ROLE_SYNC_MODE', 'push'),
+    'role_sync_mode' => env('IAM_ROLE_SYNC_MODE', 'pull'),
+
+    /*
+    |------------------------------------------------------------------------
+    | User synchronization mode
+    |------------------------------------------------------------------------
+    |
+    | Mode determines direction of user sync between IAM and client.
+    | * pull: IAM pulls users from client and updates IAM (default)
+    | * push: IAM pushes users to client (including delete propagation)
+    */
+    'user_sync_mode' => env('IAM_USER_SYNC_MODE', 'push'),
+
+    /*
+    |------------------------------------------------------------------------
+    | Push mode user creation policy
+    |------------------------------------------------------------------------
+    |
+    | When `user_sync_mode` is `push`, new users are created only if this
+    | setting is true. Default is true, enabling provisioning from IAM.
+    */
+    'user_sync_from_iam_allow_create' => env('IAM_USER_SYNC_FROM_IAM_ALLOW_CREATE', true),
+
+    /*
+    |------------------------------------------------------------------------
+    | Push mode user delete policy
+    |------------------------------------------------------------------------
+    |
+    | If true, when IAM pushes users the client may delete/disable local users
+    | that are no longer present in IAM payload.
+    |
+    */
+    'user_sync_from_iam_delete_missing' => env('IAM_USER_SYNC_FROM_IAM_DELETE_MISSING', false),
 
     /*
     |------------------------------------------------------------------------
@@ -165,6 +217,7 @@ return [
     /*
     |------------------------------------------------------------------------
     | Push mode role policy
+
     |------------------------------------------------------------------------
     |
     | In push mode, IAM sends roles to client; client decides if new role can be created.
@@ -183,7 +236,9 @@ return [
     |
     */
 
-    'user_fields' => env('IAM_USER_FIELDS', 'id,name,nip,active'),
+    'user_fields' => env('IAM_USER_FIELDS', 'id,name,nip,email,active'),
+
+    'user_sync_force_pull' => env('IAM_USER_SYNC_FORCE_PULL', false),
 
     /*
     |--------------------------------------------------------------------------

@@ -51,8 +51,14 @@ class ApplicationUserSyncService
      * The returned array mimics the structure of the role sync service so the
      * UI can display a summary if needed.
      */
-    public function syncUsers(Application $application): array
+    public function syncUsers(Application $application, ?int $userId = null): array
     {
+        $mode = config('iam.user_sync_mode', 'pull');
+
+        if ($mode === 'push') {
+            return $this->pushUsersToClient($application, $userId);
+        }
+
         $result = $this->fetchClientUsers($application);
 
         if (! $result['success']) {
@@ -71,7 +77,6 @@ class ApplicationUserSyncService
         }
 
         foreach ($clientUsers as $cUser) {
-            // find by nip first, fallback to email if provided
             $userQuery = User::query();
             if (! empty($cUser['nip'])) {
                 $userQuery->where('nip', $cUser['nip']);
@@ -86,21 +91,68 @@ class ApplicationUserSyncService
                     'nip' => $cUser['nip'] ?? null,
                     'name' => $cUser['name'] ?? null,
                     'email' => $cUser['email'] ?? null,
-                    // password is meaningless for sync; generate a random hash
                     'password' => bcrypt('rschjaya1234'),
                     'active' => $cUser['active'] ?? true,
                 ]);
+
+                Log::info('iam.user_sync_created_user', [
+                    'application_id' => $application->id,
+                    'user_id' => $user->id,
+                    'nip' => $user->nip,
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'active' => $user->active,
+                ]);
+
+                if (empty($user->email)) {
+                    Log::warning('iam.user_sync_created_user_missing_email', [
+                        'application_id' => $application->id,
+                        'user_id' => $user->id,
+                        'nip' => $user->nip,
+                        'name' => $user->name,
+                    ]);
+                }
+
                 $created++;
             } else {
-                $user->update([
-                    'name' => $cUser['name'] ?? $user->name,
-                    'email' => $cUser['email'] ?? $user->email,
-                    'active' => $cUser['active'] ?? $user->active,
+                $changesBefore = $user->only(['nip', 'name', 'email', 'active']);
+
+                $forcePull = config('iam.user_sync_force_pull', false);
+                if ($forcePull) {
+                    $user->update([
+                        'name' => $cUser['name'] ?? null,
+                        'email' => $cUser['email'] ?? null,
+                        'active' => array_key_exists('active', $cUser) ? $cUser['active'] : null,
+                    ]);
+                } else {
+                    $user->update([
+                        'name' => array_key_exists('name', $cUser) ? $cUser['name'] : $user->name,
+                        'email' => array_key_exists('email', $cUser) ? $cUser['email'] : $user->email,
+                        'active' => array_key_exists('active', $cUser) ? $cUser['active'] : $user->active,
+                    ]);
+                }
+
+                $changesAfter = $user->only(['nip', 'name', 'email', 'active']);
+
+                Log::info('iam.user_sync_updated_user', [
+                    'application_id' => $application->id,
+                    'user_id' => $user->id,
+                    'before' => $changesBefore,
+                    'after' => $changesAfter,
                 ]);
+
+                if (empty($user->email)) {
+                    Log::warning('iam.user_sync_updated_user_missing_email', [
+                        'application_id' => $application->id,
+                        'user_id' => $user->id,
+                        'nip' => $user->nip,
+                        'name' => $user->name,
+                    ]);
+                }
+
                 $updated++;
             }
 
-            // choose role slugs based on mode and payload.
             $roleSlugs = [];
             if ($this->syncMode === 'manual' && isset($this->manualRoleMapping[$application->id])) {
                 $roleSlugs = $this->manualRoleMapping[$application->id];
@@ -109,16 +161,9 @@ class ApplicationUserSyncService
             }
 
             try {
-                // the new workflow no longer assigns roles directly; instead we
-                // link the user to the appropriate access profiles that contain
-                // the given slugs for this application.
                 $assignmentService->syncProfilesForUserAndApp($user, $application, $roleSlugs);
-
-                // if the user has existing direct app roles, ensure those roles
-                // are also represented by access profiles.
                 $assignmentService->syncProfilesFromExistingAppRoles($user, $application);
             } catch (\Exception $e) {
-                // log and continue, but don't fail the entire sync
                 Log::warning('user_role_sync_failed', [
                     'application_id' => $application->id,
                     'user_id' => $user->id,
@@ -137,6 +182,14 @@ class ApplicationUserSyncService
             'client_users' => $clientUsers,
             'comparison' => $comparison,
         ];
+    }
+
+    /**
+     * Force pushing users to client regardless of configure mode.
+     */
+    public function forcePushUsers(Application $application, ?int $userId = null): array
+    {
+        return $this->pushUsersToClient($application, $userId);
     }
 
     /**
@@ -332,7 +385,7 @@ class ApplicationUserSyncService
     /**
      * Get all users that currently have at least one role for the application.
      */
-    protected function getIamUsers(Application $application): array
+    protected function getIamUsers(Application $application, ?int $userId = null): array
     {
         // include users who either have a direct application role (for
         // backwards compatibility) or who are connected to profiles that
@@ -344,25 +397,24 @@ class ApplicationUserSyncService
         // plain `$q2->where('application_id', $id)` which produced ambiguous SQL
         // and caused a runtime exception in the logs.  do **not** revert this
         // block to an unqualified condition.
-        $users = User::query()
-            ->where(function ($q) use ($application) {
-                // filter by application via the the roles table; every role
-                // record includes its owning application, and using this column
-                // avoids any need to reference the optional pivot field. this
-                // also circumvents a Laravel bug where `wherePivot` could be
-                // compiled as a naked `pivot` identifier, which is what caused
-                // the "unknown column 'pivot'" error in earlier logs.
+        $userQuery = User::query()
+            ->where(function ($q) use ($application, $userId) {
+                // filter by application via the roles table (direct roles or profiles)
+                // plus always include a targeted user ID even if they do not yet
+                // have any application roles.
                 $q->whereHas('applicationRoles', function ($q2) use ($application) {
                     $q2->where('iam_roles.application_id', $application->id);
                 })
                     ->orWhereHas('accessProfiles.roles', function ($q3) use ($application) {
-                        // the access-profile path already joins `iam_roles` so
-                        // qualification is straightforward.
                         $q3->where('iam_roles.application_id', $application->id);
                     });
-            })
-            ->with(['accessProfiles.roles', 'applicationRoles'])
-            ->get();
+
+                if ($userId !== null) {
+                    $q->orWhere('id', $userId);
+                }
+            });
+
+        $users = $userQuery->with(['accessProfiles.roles', 'applicationRoles'])->get();
 
         return $users->map(function (User $user) use ($application) {
             $roles = $user->effectiveApplicationRoles()
@@ -376,9 +428,142 @@ class ApplicationUserSyncService
                 'email' => $user->email,
                 'name' => $user->name,
                 'active' => $user->active,
+                'unit_kerja' => $user->unitKerjas()->pluck('unit_name')->toArray(),
                 'roles' => $roles,
             ];
         })->toArray();
+    }
+
+    /**
+     * Push IAM users to the client application (push mode).
+     */
+    protected function pushUsersToClient(Application $application, ?int $userId = null): array
+    {
+        $users = $this->getIamUsers($application, $userId);
+        $syncUrl = $this->buildPushUsersUrl($application, $application->app_key);
+
+        Log::info('iam.push_users_request', [
+            'app_key' => $application->app_key,
+            'application_id' => $application->id,
+            'sync_url' => $syncUrl,
+            'user_count' => count($users),
+            'pushed_user_ids' => collect($users)->pluck('id')->toArray(),
+            'user_id_target' => $userId,
+        ]);
+
+        try {
+            $payload = ['users' => $users];
+            $jsonBody = json_encode($payload);
+
+            if (! config('iam.backchannel_verify', true)) {
+                $response = Http::timeout(50)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($syncUrl);
+            } elseif (config('iam.backchannel_method', 'jwt') === 'jwt') {
+                $token = app(JWTTokenService::class)->generateBackchannelToken($application);
+                $response = Http::withToken($token)
+                    ->timeout(50)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($syncUrl);
+            } else {
+                $secret = config('iam.sso_secret', config('sso.secret', env('SSO_SECRET', ''))) ?: $application->secret;
+                $signature = hash_hmac('sha256', $jsonBody, $secret);
+                $header = config('sso.backchannel.signature_header', 'IAM-Signature');
+
+                $response = Http::withHeaders([
+                    $header => $signature,
+                    'X-IAM-App-Key' => $application->app_key,
+                    'Content-Type' => 'application/json',
+                ])
+                    ->timeout(50)
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($syncUrl);
+            }
+
+            if (! $response->successful()) {
+                Log::warning('iam.push_users_failed', [
+                    'app_key' => $application->app_key,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'hint' => 'Pastikan client IAM_USER_SYNC_MODE=push dan endpoint /api/iam/push-users dapat dipanggil.',
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => "Client returned status {$response->status()}",
+                    'iam_users' => $users,
+                    'client_users' => [],
+                ];
+            }
+
+            $clientData = $response->json() ?? [];
+
+            Log::info('iam.push_users_response', [
+                'app_key' => $application->app_key,
+                'status' => $response->status(),
+                'response' => $clientData,
+            ]);
+
+            return array_merge([
+                'success' => true,
+                'message' => 'Push completed',
+                'iam_users' => $users,
+            ], $clientData);
+        } catch (\Exception $e) {
+            Log::error('Failed to push users to client application', [
+                'app_key' => $application->app_key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'iam_users' => $users,
+                'client_users' => [],
+            ];
+        }
+    }
+
+    /**
+     * Build the client endpoint to receive pushed users.
+     */
+    protected function buildPushUsersUrl(Application $application, string $appKey): string
+    {
+        $base = $this->getBackchannelUrl($application);
+
+        if (! $base) {
+            throw new \InvalidArgumentException('Application has no callback/backchannel URL configured for sync.');
+        }
+
+        return $base . '/api/iam/push-users?app_key=' . urlencode($appKey);
+    }
+
+    /**
+     * Determine the base URL for back-channel operations (sync users/roles).
+     */
+    protected function getBackchannelUrl(Application $application): ?string
+    {
+        $backchannel = $application->backchannel_url ?: $application->callback_url;
+
+        if (! $backchannel) {
+            return null;
+        }
+
+        $parsed = parse_url($backchannel);
+
+        if (empty($parsed['scheme']) || empty($parsed['host'])) {
+            return null;
+        }
+
+        $base = $parsed['scheme'] . '://' . $parsed['host'];
+
+        if (! empty($parsed['port'])) {
+            $base .= ':' . $parsed['port'];
+        }
+
+        return rtrim($base, '/');
     }
 
     /**

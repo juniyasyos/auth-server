@@ -29,7 +29,7 @@ if (is_array($ssoRoutes) && isset($ssoRoutes['web']) && is_callable($ssoRoutes['
 }
 
 if (app()->environment('testing')) {
-    require __DIR__ . '/testing.php';
+    require __DIR__ . '/testing.php'; 
 }
 
 Route::middleware('auth')
@@ -37,9 +37,9 @@ Route::middleware('auth')
     ->name('oauth.userinfo');
 
 Route::middleware('auth')
-    ->get('/iam/debug/user-applications', [UserInfoController::class, 'applications'])
-    ->name('iam.debug.user-applications');
+    ->get('/iam/user-applications', [UserInfoController::class, 'applications'])
+    ->name('iam.user-applications');
 
 Route::middleware('auth')
-    ->get('/iam/debug/user-access-profiles', [UserInfoController::class, 'accessProfiles'])
-    ->name('iam.debug.user-access-profiles');
+    ->get('/iam/user-access-profiles', [UserInfoController::class, 'accessProfiles'])
+    ->name('iam.user-access-profiles');

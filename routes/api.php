@@ -27,12 +27,14 @@ Route::middleware('auth:api')->prefix('auth')->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
 });
 
-// Protected user routes
-Route::middleware('auth:api')->group(function () {
+// Protected user routes (SSO JWT)
+Route::middleware('sso.jwt')->group(function () {
     Route::get('/users/me', UserInfoController::class);
     Route::get('/user', UserInfoController::class);
     Route::get('/users/applications', [UserInfoController::class, 'applications'])
         ->name('users.applications');
+    Route::get('/users/applications/detail', [UserInfoController::class, 'applicationsDetail'])
+        ->name('users.applications.detail');
 });
 
 $ssoRoutes = require __DIR__ . '/sso.php';
