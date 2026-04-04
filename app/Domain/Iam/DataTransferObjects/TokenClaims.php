@@ -52,6 +52,26 @@ class TokenClaims
             'exp' => $this->expiresAt,
         ];
 
+        // Add unit and employee_id if present
+        if ($this->unit !== null) {
+            $payload['unit'] = $this->unit;
+        }
+        if ($this->employeeId !== null) {
+            $payload['employee_id'] = $this->employeeId;
+        }
+
+        // Include 'app' field from extra if present (for SSO application context)
+        if (isset($this->extra['app'])) {
+            $payload['app'] = $this->extra['app'];
+        }
+
+        // Include any other extra fields
+        foreach ($this->extra as $key => $value) {
+            if ($key !== 'app' && !isset($payload[$key])) {
+                $payload[$key] = $value;
+            }
+        }
+
         return $payload;
     }
 
@@ -62,6 +82,16 @@ class TokenClaims
      */
     public static function fromArray(array $data): self
     {
+        // Extract extra fields that aren't standard JWT claims
+        $extra = [];
+        $standardClaims = ['sub', 'nip', 'email', 'name', 'apps', 'roles_by_app', 'iss', 'iat', 'exp', 'unit', 'employee_id'];
+
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $standardClaims, true)) {
+                $extra[$key] = $value;
+            }
+        }
+
         return new self(
             userId: $data['sub'] ?? 0,
             nip: $data['nip'] ?? null,
@@ -72,8 +102,9 @@ class TokenClaims
             issuer: $data['iss'] ?? '',
             issuedAt: $data['iat'] ?? 0,
             expiresAt: $data['exp'] ?? 0,
+            unit: $data['unit'] ?? null,
             employeeId: $data['employee_id'] ?? null,
-            extra: $data['extra'] ?? []
+            extra: $extra
         );
     }
 

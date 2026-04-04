@@ -130,6 +130,7 @@ class TokenBuilder
     /**
      * Refresh a token (decode old token, issue new one with updated expiry).
      * Allows refreshing even if token is expired.
+     * Preserves critical application context from the original token.
      *
      * @throws \Exception
      */
@@ -152,8 +153,17 @@ class TokenBuilder
         // Find user
         $user = User::findOrFail($oldClaims->userId);
 
-        // Build fresh token
-        return $this->buildTokenForUser($user, $oldClaims->extra);
+        // Extract raw payload to preserve 'app' field that TokenClaims doesn't handle
+        $rawPayload = $this->extractRawPayload($token);
+        $appKey = $rawPayload['app'] ?? null;
+
+        // Merge extra data with app field to preserve it during refresh
+        $extra = array_merge($oldClaims->extra, [
+            'app' => $appKey,
+        ]);
+
+        // Build fresh token with preserved application context
+        return $this->buildTokenForUser($user, $extra);
     }
 
     /**
@@ -184,6 +194,30 @@ class TokenBuilder
             return TokenClaims::fromArray($payload);
         } catch (\Exception $e) {
             throw new \Exception('Failed to parse token payload: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Extract raw JWT payload as associative array without verification.
+     * Used to access fields that TokenClaims::fromArray doesn't reconstruct.
+     *
+     * @throws \Exception
+     */
+    private function extractRawPayload(string $token): array
+    {
+        $parts = explode('.', $token);
+
+        if (count($parts) !== 3) {
+            throw new \Exception('Invalid JWT format');
+        }
+
+        try {
+            return json_decode(
+                base64_decode(strtr($parts[1], '-_', '+/')),
+                associative: true
+            ) ?? [];
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to extract token payload: ' . $e->getMessage());
         }
     }
 }
