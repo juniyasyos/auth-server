@@ -21,8 +21,8 @@ class SsoTokenController extends Controller
     /**
      * Issue an access token for an authenticated user.
      *
-     * This endpoint expects the user to be authenticated and optionally
-     * validates the requesting application.
+     * This endpoint expects the user to be authenticated (via Bearer token or session)
+     * and optionally validates the requesting application.
      */
     public function issueToken(Request $request): JsonResponse
     {
@@ -30,8 +30,8 @@ class SsoTokenController extends Controller
             'app_key' => 'nullable|string|exists:applications,app_key',
         ]);
 
-        /** @var User $user */
-        $user = Auth::user();
+        // Get user from middleware authentication or session
+        $user = $request->user() ?? Auth::user();
 
         if (! $user) {
             return response()->json([
@@ -245,35 +245,36 @@ class SsoTokenController extends Controller
 
     /**
      * Get user information from token.
+     * The user is authenticated by VerifySsoJwtApi middleware.
      */
     public function userinfo(Request $request): JsonResponse
     {
-        $token = $request->bearerToken();
+        $user = $request->user();
 
-        if (! $token) {
+        if (!$user) {
             return response()->json([
                 'error' => 'invalid_request',
-                'message' => 'Bearer token required.',
-            ], 400);
-        }
-
-        try {
-            $claims = $this->tokenBuilder->verify($token);
-
-            return response()->json([
-                'sub' => $claims->userId,
-                'nip' => $claims->nip ?? null,
-                'email' => $claims->email,
-                'name' => $claims->name,
-                'apps' => $claims->apps,
-                'roles_by_app' => $claims->rolesByApp,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'invalid_token',
-                'message' => $e->getMessage(),
+                'message' => 'User not authenticated.',
             ], 401);
         }
+
+        // Get token payload from middleware
+        $ssoPayload = $request->attributes->get('sso_payload');
+
+        // Build and return user claims
+        $claims = $this->tokenBuilder->buildClaimsForUser($user);
+
+        return response()->json([
+            'sub' => $claims->userId,
+            'nip' => $claims->nip ?? null,
+            'email' => $claims->email,
+            'name' => $claims->name,
+            'apps' => $claims->apps,
+            'roles_by_app' => $claims->rolesByApp,
+            'iss' => $claims->issuer,
+            'iat' => $ssoPayload['iat'] ?? $claims->issuedAt,
+            'exp' => $ssoPayload['exp'] ?? $claims->expiresAt,
+        ]);
     }
 
     /**

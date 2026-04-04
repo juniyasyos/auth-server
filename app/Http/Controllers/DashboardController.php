@@ -17,11 +17,16 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get()
             ->map(function ($app) {
+                // Extract primary URL from redirect_uris array (same as UserDataService)
+                $primaryUrl = is_array($app->redirect_uris) && !empty($app->redirect_uris)
+                    ? $app->redirect_uris[0]
+                    : null;
+
                 return [
                     'app_key' => $app->app_key,
                     'name' => $app->name,
                     'description' => $app->description ?? '',
-                    'app_url' => $app->app_url,
+                    'app_url' => $primaryUrl,
                     'enabled' => $app->enabled,
                     'logo_url' => $app->logo_url ?? null,
                 ];

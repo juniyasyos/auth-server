@@ -174,7 +174,7 @@ class TokenService
                 throw new RuntimeException('Invalid SSO token payload.');
             }
 
-            if (($payload['iss'] ?? null) !== $this->getIssuer()) {
+            if (!$this->isValidIssuer($payload['iss'] ?? null)) {
                 $this->logger->logTokenVerificationFailed(
                     tokenPreview: $tokenPreview,
                     reason: 'Invalid issuer',
@@ -359,6 +359,36 @@ class TokenService
         $issuer = (string) Config::get('sso.issuer');
 
         return $issuer !== '' ? $issuer : 'iam-server';
+    }
+
+    private function isValidIssuer(?string $tokenIssuer): bool
+    {
+        if ($tokenIssuer === null) {
+            return false;
+        }
+
+        $expectedIssuer = $this->getIssuer();
+
+        // Direct match
+        if ($tokenIssuer === $expectedIssuer) {
+            return true;
+        }
+
+        // Normalize localhost/127.0.0.1 for comparison
+        $normalizedToken = $this->normalizeIssuer($tokenIssuer);
+        $normalizedExpected = $this->normalizeIssuer($expectedIssuer);
+
+        return $normalizedToken === $normalizedExpected;
+    }
+
+    private function normalizeIssuer(string $issuer): string
+    {
+        // Convert localhost to 127.0.0.1 and vice versa for comparison
+        return str_replace(
+            ['http://localhost:', 'https://localhost:'],
+            ['http://127.0.0.1:', 'https://127.0.0.1:'],
+            $issuer
+        );
     }
 
     private function getTtl(): int

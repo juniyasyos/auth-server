@@ -2,6 +2,7 @@
 
 use App\Domain\Iam\Http\Controllers\SsoTokenController;
 use App\Http\Controllers\SSOController;
+use App\Http\Controllers\UserInfoController;
 use App\Http\Controllers\Sso\SsoRedirectController;
 use App\Http\Controllers\Sso\SsoVerifyController;
 use App\Http\Middleware\SsoLoggingMiddleware;
@@ -33,35 +34,56 @@ return [
                     ->name('api.sso.verify');
             });
 
-        // New IAM Token Endpoints
-        Route::prefix('sso')->group(function () {
-            Route::middleware('auth')->post('/token/issue', [SsoTokenController::class, 'issueToken'])
-                ->name('sso.token.issue');
+        // Token exchange endpoints (no token required yet)
+        Route::middleware([SsoLoggingMiddleware::class])
+            ->group(function () {
+                Route::post('/sso/token', [SsoTokenController::class, 'token'])
+                    ->name('sso.token.exchange');
 
-            Route::post('/token', [SsoTokenController::class, 'token'])
-                ->name('sso.token.exchange');
+                Route::post('/sso/token/refresh', [SsoTokenController::class, 'refresh'])
+                    ->name('sso.token.refresh');
 
-            Route::post('/token/refresh', [SsoTokenController::class, 'refresh'])
-                ->name('sso.token.refresh');
+                Route::post('/oauth/token', [SSOController::class, 'token'])
+                    ->name('oauth.token');
+            });
 
-            Route::post('/introspect', [SsoTokenController::class, 'introspect'])
-                ->name('sso.introspect');
+        // Protected endpoints (require SSO JWT token in Authorization header)
+        Route::middleware(['sso.jwt', SsoLoggingMiddleware::class])
+            ->group(function () {
+                Route::post('/sso/token/issue', [SsoTokenController::class, 'issueToken'])
+                    ->name('sso.token.issue');
 
-            Route::get('/userinfo', [SsoTokenController::class, 'userinfo'])
-                ->name('sso.userinfo');
-        });
+                Route::get('/sso/userinfo', [SsoTokenController::class, 'userinfo'])
+                    ->name('sso.userinfo');
 
-        // Legacy OAuth2 endpoints (keep for backward compatibility)
-        Route::post('/oauth/token', [SSOController::class, 'token'])
-            ->name('oauth.token');
+                Route::get('/oauth/userinfo', [SSOController::class, 'userInfo'])
+                    ->name('api.oauth.userinfo');
 
-        Route::post('/oauth/revoke', [SSOController::class, 'revoke'])
-            ->name('oauth.revoke');
+                Route::get('/iam/user-applications', [UserInfoController::class, 'applications'])
+                    ->name('iam.user-applications');
 
-        Route::post('/oauth/introspect', [SSOController::class, 'introspect'])
-            ->name('oauth.introspect');
+                Route::get('/iam/user-access-profiles', [UserInfoController::class, 'accessProfiles'])
+                    ->name('iam.user-access-profiles');
 
-        Route::get('/oauth/userinfo', [SSOController::class, 'userInfo'])
-            ->name('api.oauth.userinfo');
+                // Restore users/applications endpoint for backward compatibility with client apps
+                Route::get('/users/applications', [UserInfoController::class, 'applications'])
+                    ->name('users.applications');
+
+                Route::get('/users/applications/detail', [UserInfoController::class, 'applicationsDetail'])
+                    ->name('users.applications.detail');
+            });
+
+        // Server-to-server endpoints (client app validates with app_secret)
+        Route::middleware([SsoLoggingMiddleware::class])
+            ->group(function () {
+                Route::post('/sso/introspect', [SsoTokenController::class, 'introspect'])
+                    ->name('sso.introspect');
+
+                Route::post('/oauth/revoke', [SSOController::class, 'revoke'])
+                    ->name('oauth.revoke');
+
+                Route::post('/oauth/introspect', [SSOController::class, 'introspect'])
+                    ->name('oauth.introspect');
+            });
     },
 ];

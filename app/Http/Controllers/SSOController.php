@@ -372,48 +372,46 @@ class SSOController extends Controller
      */
     public function userInfo(Request $request): JsonResponse
     {
-        $token = $request->bearerToken();
+        // User should be authenticated by VerifySsoJwtApi middleware
+        $user = $request->user();
 
-        if (! $token) {
+        if (!$user) {
             return response()->json([
                 'error' => 'invalid_request',
-                'error_description' => 'Access token is required',
+                'error_description' => 'User not authenticated',
+            ], 401);
+        }
+
+        // Get application from token payload (set by middleware)
+        $ssoPayload = $request->attributes->get('sso_payload');
+        if (!$ssoPayload || !isset($ssoPayload['app'])) {
+            return response()->json([
+                'error' => 'invalid_token',
+                'error_description' => 'Token missing application information',
             ], 400);
         }
 
+        // Get application
         try {
-            $decoded = $this->jwtService->verifyToken($token);
-
-            if (! isset($decoded->type) || $decoded->type !== 'access') {
-                return response()->json([
-                    'error' => 'invalid_token',
-                    'error_description' => 'Token is not an access token',
-                ], 401);
-            }
-
-            // Get user
-            $user = User::findOrFail($decoded->sub);
-
-            // Get application
-            $application = Application::findByKey($decoded->app_key);
-
-            // Get comprehensive user data
-            $userData = $this->userDataService->getUserData($user, $application, true);
-
-            return response()->json([
-                'sub' => $decoded->sub,
-                'user' => $userData,
-                'token_info' => [
-                    'issued_at' => $decoded->iat,
-                    'expires_at' => $decoded->exp,
-                    'app_key' => $decoded->app_key,
-                ],
-            ]);
+            $application = Application::findByKey($ssoPayload['app']);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'invalid_token',
-                'error_description' => $e->getMessage(),
-            ], 401);
+                'error' => 'invalid_request',
+                'error_description' => 'Application not found',
+            ], 404);
         }
+
+        // Get comprehensive user data
+        $userData = $this->userDataService->getUserData($user, $application, true);
+
+        return response()->json([
+            'sub' => $user->id,
+            'user' => $userData,
+            'token_info' => [
+                'issued_at' => $ssoPayload['iat'] ?? null,
+                'expires_at' => $ssoPayload['exp'] ?? null,
+                'app_key' => $ssoPayload['app'] ?? null,
+            ],
+        ]);
     }
 }

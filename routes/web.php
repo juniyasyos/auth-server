@@ -29,15 +29,3 @@ if (is_array($ssoRoutes) && isset($ssoRoutes['web']) && is_callable($ssoRoutes['
 if (app()->environment('testing')) {
     require __DIR__ . '/testing.php';
 }
-
-Route::middleware('auth')
-    ->get('/oauth/userinfo', UserInfoController::class)
-    ->name('oauth.userinfo');
-
-Route::middleware('auth')
-    ->get('/iam/user-applications', [UserInfoController::class, 'applications'])
-    ->name('iam.user-applications');
-
-Route::middleware('auth')
-    ->get('/iam/user-access-profiles', [UserInfoController::class, 'accessProfiles'])
-    ->name('iam.user-access-profiles');

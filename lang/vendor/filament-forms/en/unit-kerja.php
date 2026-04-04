@@ -12,7 +12,7 @@ return [
     // Columns/Field Labels
     'fields' => [
         'id' => 'ID',
-        'unit_name' => 'Work Unit Name',
+        'unit_name' => 'Departement Name',
         'description' => 'Description',
         'created_at' => 'Created At',
         'updated_at' => 'Updated At',
@@ -24,15 +24,15 @@ return [
     // Form Sections
     'form' => [
         'unit' => [
-            'title' => 'Work Unit Information',
-            'description' => 'Fill in the work unit details correctly.',
-            'name_placeholder' => 'Enter work unit name',
-            'description_placeholder' => 'Add a short description of this work unit',
+            'title' => 'Departement Information',
+            'description' => 'Fill in the Departement details correctly.',
+            'name_placeholder' => 'Enter Departement name',
+            'description_placeholder' => 'Add a short description of this Departement',
             'helper_text' => 'The unit name must be unique and up to 100 characters.',
         ],
         'users' => [
-            'title' => 'Users in Work Unit',
-            'description' => 'Add users to this work unit.',
+            'title' => 'Users in Departement',
+            'description' => 'Add users to this Departement.',
             'search_placeholder' => 'Search users...',
             'add_button' => 'Add User',
             'remove_button' => 'Remove User',
@@ -41,6 +41,6 @@ return [
 
     'actions' => [
         'attach' => 'Attach User',
-        'add' => 'Add Work Unit',
+        'add' => 'Add Departement',
     ],
 ];
