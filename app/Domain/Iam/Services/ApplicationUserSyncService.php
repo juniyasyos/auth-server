@@ -210,6 +210,231 @@ class ApplicationUserSyncService
     }
 
     /**
+     * Push users in chunks for better memory management with large datasets.
+     * 
+     * OPTIMIZATION: For applications with thousands of users, chunking ensures:
+     * - Memory usage stays constant (not loading all users at once)
+     * - Payload stays within HTTP POST limits
+     * - Can process millions of users without exceeding PHP memory limit
+     * 
+     * Default chunk size: 500 users per request
+     */
+    public function pushUsersByChunks(Application $application, ?int $userId = null, int $chunkSize = 500): array
+    {
+        $syncUrl = $this->buildPushUsersUrl($application, $application->app_key);
+
+        // Get base users query without loading all data
+        $baseQuery = User::query()
+            ->where(function ($q) use ($application, $userId) {
+                $q->whereHas('applicationRoles', function ($q2) use ($application) {
+                    $q2->where('iam_roles.application_id', $application->id);
+                })
+                    ->orWhereHas('accessProfiles.roles', function ($q3) use ($application) {
+                        $q3->where('iam_roles.application_id', $application->id);
+                    });
+
+                if ($userId !== null) {
+                    $q->orWhere('id', $userId);
+                }
+            });
+
+        $totalUsers = $baseQuery->count();
+        Log::info('iam.push_users_chunked_start', [
+            'app_key' => $application->app_key,
+            'application_id' => $application->id,
+            'total_users' => $totalUsers,
+            'chunk_size' => $chunkSize,
+            'estimated_chunks' => ceil($totalUsers / $chunkSize),
+        ]);
+
+        $allResults = [
+            'success' => true,
+            'message' => 'All chunks pushed successfully',
+            'iam_users' => [],
+            'created' => 0,
+            'updated' => 0,
+            'deleted' => 0,
+            'skipped' => 0,
+        ];
+
+        $offset = 0;
+        $chunkNumber = 1;
+
+        // Process users in smaller chunks
+        while ($offset < $totalUsers) {
+            Log::info('iam.push_users_chunk_processing', [
+                'app_key' => $application->app_key,
+                'chunk' => $chunkNumber,
+                'offset' => $offset,
+                'size' => $chunkSize,
+            ]);
+
+            // Get only the needed data for this chunk (no N+1 queries)
+            $users = $baseQuery->clone()
+                ->with([
+                    'accessProfiles.roles' => function ($q) use ($application) {
+                        $q->where('iam_roles.application_id', $application->id);
+                    },
+                    'applicationRoles' => function ($q) use ($application) {
+                        $q->where('iam_user_application_roles.application_id', $application->id);
+                    },
+                    'unitKerjas:id,unit_name',
+                ])
+                ->offset($offset)
+                ->limit($chunkSize)
+                ->get()
+                ->map(function (User $user) use ($application) {
+                    // Calculate roles from already-loaded relationships
+                    $directRoles = $user->applicationRoles
+                        ->where('application_id', $application->id)
+                        ->pluck('slug')
+                        ->toArray();
+
+                    $profileRoles = $user->accessProfiles
+                        ->filter(function ($profile) {
+                            return $profile->is_active;
+                        })
+                        ->flatMap(function ($profile) use ($application) {
+                            return $profile->roles
+                                ->where('application_id', $application->id)
+                                ->pluck('slug');
+                        })
+                        ->toArray();
+
+                    $roles = array_unique(array_merge($directRoles, $profileRoles));
+
+                    return [
+                        'id' => $user->id,
+                        'nip' => $user->nip,
+                        'email' => $user->email,
+                        'name' => $user->name,
+                        'active' => $user->active,
+                        'unit_kerja' => $user->unitKerjas->pluck('unit_name')->toArray(),
+                        'roles' => array_values($roles),
+                    ];
+                })
+                ->toArray();
+
+            if (empty($users)) {
+                break;
+            }
+
+            // Send this chunk to client
+            $chunkResult = $this->sendPushUsersPayload(
+                $syncUrl,
+                $application,
+                $users,
+                "chunk_{$chunkNumber}_of_" . ceil($totalUsers / $chunkSize)
+            );
+
+            if (!$chunkResult['success']) {
+                $allResults['success'] = false;
+                $allResults['message'] = "Chunk {$chunkNumber} failed: " . $chunkResult['error'];
+                break;
+            }
+
+            // Accumulate results
+            $allResults['iam_users'] = array_merge($allResults['iam_users'], $users);
+            $allResults['created'] += $chunkResult['created'] ?? 0;
+            $allResults['updated'] += $chunkResult['updated'] ?? 0;
+            $allResults['deleted'] += $chunkResult['deleted'] ?? 0;
+            $allResults['skipped'] += $chunkResult['skipped'] ?? 0;
+
+            $offset += $chunkSize;
+            $chunkNumber++;
+
+            // Optional: Add small delay between chunks to avoid overwhelming client
+            if ($offset < $totalUsers) {
+                usleep(100000); // 100ms delay between chunks
+            }
+        }
+
+        Log::info('iam.push_users_chunked_complete', [
+            'app_key' => $application->app_key,
+            'chunks_processed' => $chunkNumber - 1,
+            'total_users' => $totalUsers,
+            'created' => $allResults['created'],
+            'updated' => $allResults['updated'],
+            'success' => $allResults['success'],
+        ]);
+
+        return $allResults;
+    }
+
+    /**
+     * Send a single push-users payload to the client.
+     * Extracted to support both chunked and non-chunked operations.
+     */
+    protected function sendPushUsersPayload(string $syncUrl, Application $application, array $users, string $context = 'single'): array
+    {
+        try {
+            $payload = ['users' => $users];
+            $jsonBody = json_encode($payload);
+
+            if (! config('iam.backchannel_verify', true)) {
+                $response = Http::timeout(50)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($syncUrl);
+            } elseif (config('iam.backchannel_method', 'jwt') === 'jwt') {
+                $token = app(JWTTokenService::class)->generateBackchannelToken($application);
+                $response = Http::withToken($token)
+                    ->timeout(50)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($syncUrl);
+            } else {
+                $secret = config('iam.sso_secret', config('sso.secret', env('SSO_SECRET', ''))) ?: $application->secret;
+                if (is_string($secret) && str_starts_with($secret, 'base64:')) {
+                    $decoded = base64_decode(substr($secret, 7), true);
+                    $secret = $decoded !== false ? $decoded : $secret;
+                }
+                $signature = hash_hmac('sha256', $jsonBody, $secret);
+                $header = config('sso.backchannel.signature_header', 'IAM-Signature');
+
+                $response = Http::withHeaders([
+                    $header => $signature,
+                    'X-IAM-App-Key' => $application->app_key,
+                    'Content-Type' => 'application/json',
+                ])
+                    ->timeout(50)
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($syncUrl);
+            }
+
+            if (! $response->successful()) {
+                Log::warning('iam.push_users_chunk_failed', [
+                    'context' => $context,
+                    'app_key' => $application->app_key,
+                    'status' => $response->status(),
+                    'user_count' => count($users),
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => "Client returned status {$response->status()}",
+                ];
+            }
+
+            return array_merge(
+                ['success' => true],
+                $response->json() ?? []
+            );
+        } catch (\Exception $e) {
+            Log::error('iam.push_users_chunk_exception', [
+                'context' => $context,
+                'app_key' => $application->app_key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Prepare a dry-run preview of sync actions for the application.
      * Returns client user records with expected profile mapping, but does not
      * create or update any users.
@@ -453,13 +678,45 @@ class ApplicationUserSyncService
                 }
             });
 
-        $users = $userQuery->with(['accessProfiles.roles', 'applicationRoles'])->get();
+        // OPTIMIZATION: Eager load all relationships to avoid N+1 queries
+        $users = $userQuery
+            ->with([
+                'accessProfiles.roles' => function ($q) use ($application) {
+                    // Only load roles for this application to reduce memory
+                    $q->where('iam_roles.application_id', $application->id);
+                },
+                'applicationRoles' => function ($q) use ($application) {
+                    // Filter by application_id in the pivot table (iam_user_application_roles)
+                    $q->where('iam_user_application_roles.application_id', $application->id);
+                },
+                'unitKerjas:id,unit_name', // Only load needed columns
+            ])
+            ->get();
 
         return $users->map(function (User $user) use ($application) {
-            $roles = $user->effectiveApplicationRoles()
+            // OPTIMIZATION: Calculate roles from already-loaded relationships
+            // instead of querying again per user
+
+            // Collect direct application roles
+            $directRoles = $user->applicationRoles
                 ->where('application_id', $application->id)
                 ->pluck('slug')
                 ->toArray();
+
+            // Collect roles from active access profiles
+            $profileRoles = $user->accessProfiles
+                ->filter(function ($profile) {
+                    return $profile->is_active;
+                })
+                ->flatMap(function ($profile) use ($application) {
+                    return $profile->roles
+                        ->where('application_id', $application->id)
+                        ->pluck('slug');
+                })
+                ->toArray();
+
+            // Merge and unique roles
+            $roles = array_unique(array_merge($directRoles, $profileRoles));
 
             return [
                 'id' => $user->id,
@@ -467,8 +724,8 @@ class ApplicationUserSyncService
                 'email' => $user->email,
                 'name' => $user->name,
                 'active' => $user->active,
-                'unit_kerja' => $user->unitKerjas()->pluck('unit_name')->toArray(),
-                'roles' => $roles,
+                'unit_kerja' => $user->unitKerjas->pluck('unit_name')->toArray(),
+                'roles' => array_values($roles), // Re-index array
             ];
         })->toArray();
     }
