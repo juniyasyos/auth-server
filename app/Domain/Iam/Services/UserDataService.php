@@ -10,6 +10,32 @@ use Illuminate\Support\Collection;
 class UserDataService
 {
     /**
+     * Extract primary URL from redirect_uris (flexible format support).
+     * Handles both string and array formats for backward compatibility.
+     *
+     * @param mixed $redirectUris String or array of redirect URIs
+     * @return string|null Primary URL or null if empty
+     */
+    private function getPrimaryUrl(mixed $redirectUris): ?string
+    {
+        if (empty($redirectUris)) {
+            return null;
+        }
+
+        // If it's an array, get first element
+        if (is_array($redirectUris)) {
+            return !empty($redirectUris) ? $redirectUris[0] : null;
+        }
+
+        // If it's a string, return it directly
+        if (is_string($redirectUris)) {
+            return trim($redirectUris);
+        }
+
+        return null;
+    }
+
+    /**
      * Get comprehensive user data for SSO/API responses.
      *
      * @param User $user
@@ -113,9 +139,7 @@ class UserDataService
             ->map(function ($appRoles, $appKey) {
                 $firstRole = $appRoles->first();
                 $app = $firstRole->application;
-                $primaryUrl = is_array($app->redirect_uris) && !empty($app->redirect_uris)
-                    ? $app->redirect_uris[0]
-                    : null;
+                $primaryUrl = $this->getPrimaryUrl($app->redirect_uris);
 
                 return [
                     'id' => $app->id,
@@ -238,9 +262,7 @@ class UserDataService
                     continue;
                 }
 
-                $primaryUrl = is_array($app->redirect_uris) && !empty($app->redirect_uris)
-                    ? $app->redirect_uris[0]
-                    : null;
+                $primaryUrl = $this->getPrimaryUrl($app->redirect_uris);
 
                 $applications[] = [
                     'id' => $app->id,

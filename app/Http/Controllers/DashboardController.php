@@ -24,16 +24,12 @@ class DashboardController extends Controller
         $applications = [];
         foreach ($accessProfiles as $profile) {
             foreach ($profile['applications'] as $app) {
-                // Build complete app data from profile structure
-                $primaryUrl = is_array($app['redirect_uris'] ?? []) && !empty($app['redirect_uris'])
-                    ? $app['redirect_uris'][0]
-                    : null;
-
+                // Use app_url from service (already extracted by getPrimaryUrl)
                 $applications[] = [
                     'app_key' => $app['app_key'],
                     'name' => $app['name'],
                     'description' => $app['description'] ?? '',
-                    'app_url' => $primaryUrl,
+                    'app_url' => $app['app_url'],
                     'enabled' => $app['enabled'] ?? true,
                     'logo_url' => $app['logo_url'] ?? null,
                 ];
