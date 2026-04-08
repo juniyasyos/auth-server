@@ -154,7 +154,13 @@ class Application extends Model
     {
         $path = config('sso.backchannel.path', '/iam/backchannel-logout');
 
-        // Prefer explicit redirect URIs (first entry)
+        // Prefer explicit backchannel_url for internal Docker networking
+        if (! empty($this->backchannel_url)) {
+            $base = rtrim($this->backchannel_url, '/');
+            return $base . $path;
+        }
+
+        // Fallback to redirect URIs (first entry) for public URLs
         if (! empty($this->redirect_uris) && is_array($this->redirect_uris) && count($this->redirect_uris) > 0) {
             $base = rtrim($this->redirect_uris[0], '/');
             return $base . $path;
