@@ -47,10 +47,29 @@ class UsersTable
                 TextColumn::make('name')
                     ->label('Pengguna')
                     ->weight('semibold')
-                    ->description(fn(User $record) => $record->nip . ($record->email ? ' • ' . $record->email : ''))
+                    ->description(fn(User $record) => $record->nip)
                     ->icon('heroicon-m-user-circle')
                     ->searchable(['name', 'nip', 'email'])
                     ->sortable()
+                    ->toggleable(),
+
+                // UNIT KERJA
+                TextColumn::make('unit_kerja')
+                    ->label('Unit Kerja')
+                    ->getStateUsing(function (User $record): ?string {
+                        $unitKerjas = $record->unitKerjas()->pluck('unit_name')->toArray() ?? [];
+
+                        if (empty($unitKerjas)) {
+                            return null;
+                        }
+
+                        return collect($unitKerjas)
+                            ->implode(', ');
+                    })
+                    ->color('slate')
+                    ->tooltip('Unit kerja yang menjadi tempat tugas pengguna.')
+                    ->wrap()
+                    ->placeholder('Belum ada unit kerja')
                     ->toggleable(),
 
                 // DAFTAR APLIKASI YANG BISA DIAKSES
@@ -116,22 +135,13 @@ class UsersTable
                     ->tooltip(fn(User $record) => ! empty($record->two_factor_secret ?? null) ? 'MFA aktif' : 'MFA tidak aktif')
                     ->toggleable(),
 
-                // LAST LOGIN
-                TextColumn::make('last_login_at')
-                    ->label('Terakhir login')
-                    ->since()
-                    ->placeholder('Belum pernah login')
-                    ->sortable()
-                    ->tooltip(fn(User $record) => $record->last_login_at?->format('d M Y H:i') ?? 'Belum pernah login')
-                    ->toggleable(),
-
                 // UPDATED AT
                 TextColumn::make('updated_at')
                     ->label('Diperbarui')
                     ->dateTime('d M Y H:i')
                     ->sortable()
                     ->color('gray')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 TernaryFilter::make('active')

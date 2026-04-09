@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const inertiaAuth = (page.props.auth ?? {}) as any;
   const inertiaUser = inertiaAuth?.user;
   const applications = page.props?.applications ?? [];
+  const accessProfiles = page.props?.accessProfiles ?? [];
 
   useEffect(() => {
     if (!inertiaUser && !isAuthenticated) {
@@ -24,5 +25,5 @@ export default function DashboardPage() {
     return <div>Loading...</div>;
   }
 
-  return <Dashboard user={displayUser} applications={applications} />;
+  return <Dashboard user={displayUser} applications={applications} accessProfiles={accessProfiles} />;
 }
