@@ -19,9 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SsoLoggingMiddleware
 {
-    public function __construct(private readonly SsoLogger $logger)
-    {
-    }
+    public function __construct(private readonly SsoLogger $logger) {}
 
     /**
      * Handle an incoming request.
@@ -306,8 +304,9 @@ class SsoLoggingMiddleware
         // Store back to cache
         cache()->put($cacheKey, $requests, 60);
 
-        // Check if rate limit exceeded (more than 30 requests per minute)
-        if (count($requests) > 30) {
+        // Check if rate limit exceeded (more than 100 requests per minute for localhost/development)
+        $threshold = $request->ip() === '127.0.0.1' ? 100 : 30;
+        if (count($requests) > $threshold) {
             $this->logger->logRateLimit(
                 $request->ip(),
                 'sso_requests',

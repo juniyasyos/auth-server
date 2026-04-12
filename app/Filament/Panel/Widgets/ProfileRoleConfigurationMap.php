@@ -65,7 +65,6 @@ class ProfileRoleConfigurationMap extends BaseWidget
                 ->columns([
                     TextColumn::make('name')
                         ->label('Profile Name')
-                        ->fontWeight('bold')
                         ->sortable(),
 
                     TextColumn::make('id')

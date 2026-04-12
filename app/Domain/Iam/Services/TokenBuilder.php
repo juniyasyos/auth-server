@@ -85,6 +85,9 @@ class TokenBuilder
     public function decode(string $token): TokenClaims
     {
         try {
+            // Allow 60 seconds leeway for clock skew between systems
+            JWT::$leeway = 60;
+
             $decoded = JWT::decode($token, new Key($this->secretKey, $this->algorithm));
             $payload = (array) $decoded;
 
