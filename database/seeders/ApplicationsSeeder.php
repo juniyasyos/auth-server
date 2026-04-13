@@ -14,21 +14,21 @@ class ApplicationsSeeder extends Seeder
         $admin = User::where('nip', '0000.00000')->first();
 
         $applications = [
-            [
-                'app_key' => 'siimut',
-                'name' => 'SIIMUT - Sistem Informasi Manajemen Indikator Mutu Terpadu',
-                'description' => 'Aplikasi manajemen indikator kinerja mutu rumah sakit dan unit kerja',
-                'enabled' => true,
-                'redirect_uris' => [
-                    'http://127.0.0.1:8088',
-                ],
-                'callback_url' => 'http://127.0.0.1:8088/sso/callback',
-                'backchannel_url' => 'http://127.0.0.1:8088',
-                'secret' => 'siimut_secret_key_123',
-                'logo_url' => null,
-                'token_expiry' => 3600,
-                'created_by' => $admin?->id,
-            ],
+            // [
+            //     'app_key' => 'siimut',
+            //     'name' => 'SIIMUT - Sistem Informasi Manajemen Indikator Mutu Terpadu',
+            //     'description' => 'Aplikasi manajemen indikator kinerja mutu rumah sakit dan unit kerja',
+            //     'enabled' => true,
+            //     'redirect_uris' => [
+            //         'http://127.0.0.1:8088',
+            //     ],
+            //     'callback_url' => 'http://127.0.0.1:8088/sso/callback',
+            //     'backchannel_url' => 'http://127.0.0.1:8088',
+            //     'secret' => 'siimut_secret_key_123',
+            //     'logo_url' => null,
+            //     'token_expiry' => 3600,
+            //     'created_by' => $admin?->id,
+            // ],
             [
                 'app_key' => 'ikp',
                 'name' => 'IKP - Incident Reporting System',

@@ -45,9 +45,7 @@ class IkpAccessProfileSeeder extends Seeder
             /**
              * ✅ Loop IKP App Only
              */
-            if (isset($map['apps']['ikp'])) {
-                $appKey = 'ikp';
-                $roleConfigs = $map['apps']['ikp'];
+            foreach ($map['apps'] as $appKey => $roleConfigs) {
                 $appId = $applications[$appKey] ?? null;
 
                 if (! $appId) {
@@ -99,7 +97,7 @@ class IkpAccessProfileSeeder extends Seeder
                     $ikpAppId = $applications['ikp'] ?? null;
 
                     // Get existing roles that are NOT from IKP
-                    $existingRoleIds = $profile->roles()->pluck('application_roles.id')->toArray();
+                    $existingRoleIds = $profile->roles()->pluck('iam_roles.id')->toArray();
                     $siimutRoleIds = [];
 
                     if ($siimutAppId) {
