@@ -7,25 +7,24 @@ use App\Domain\Iam\Models\AccessProfile;
 use App\Domain\Iam\Models\Application;
 use App\Domain\Iam\Models\ApplicationRole;
 
-class AccessProfileSeeder extends Seeder
+class IkpAccessProfileSeeder extends Seeder
 {
     public function run(): void
     {
         /**
-         * 🔥 SIIMUT ACCESS PROFILES (loaded from JSON)
-         * Hanya untuk aplikasi siimut
-         * IKP di-handle di IkpAccessProfileSeeder
+         * 🔥 IKP-SPECIFIC SEEDER
+         * Hanya seed access profiles dengan aplikasi 'ikp'
          */
-        $configPath = config_path('access-profiles-siimut.json');
-        $mappings = json_decode(file_get_contents($configPath), true);
+        $configPath = config_path('access-profiles-ikp.json');
+        $allMappings = json_decode(file_get_contents($configPath), true);
 
         /**
-         * 🔥 Prefetch (biar hemat query)
+         * 🔥 Prefetch
          */
         $applications = Application::pluck('id', 'app_key');
         $roles = ApplicationRole::get()->groupBy('application_id');
 
-        foreach ($mappings as $map) {
+        foreach ($allMappings as $map) {
             /**
              * ✅ Upsert Access Profile
              */
@@ -44,9 +43,11 @@ class AccessProfileSeeder extends Seeder
             $roleIds = [];
 
             /**
-             * ✅ Loop Apps
+             * ✅ Loop IKP App Only
              */
-            foreach ($map['apps'] as $appKey => $roleConfigs) {
+            if (isset($map['apps']['ikp'])) {
+                $appKey = 'ikp';
+                $roleConfigs = $map['apps']['ikp'];
                 $appId = $applications[$appKey] ?? null;
 
                 if (! $appId) {
@@ -76,7 +77,7 @@ class AccessProfileSeeder extends Seeder
                             'is_system' => false,
                         ]);
 
-                        // update cache (penting biar gak miss di loop berikutnya)
+                        // update cache
                         if ($roles->has($appId)) {
                             $roles[$appId]->push($role);
                         } else {
@@ -88,20 +89,38 @@ class AccessProfileSeeder extends Seeder
 
                     $roleIds[] = $role->id;
                 }
-            }
 
-            /**
-             * ✅ Sync Roles ke Profile
-             * NOTE: Use sync() instead of syncWithoutDetaching() to completely
-             * replace old role links with new ones (fresh mapping each run)
-             */
-            if (! empty($roleIds)) {
-                $profile->roles()->sync($roleIds);
+                /**
+                 * ✅ Sync Roles ke Profile (IKP only, preserve existing siimut roles)
+                 */
+                if (! empty($roleIds)) {
+                    // Get siimut app ID
+                    $siimutAppId = $applications['siimut'] ?? null;
+                    $ikpAppId = $applications['ikp'] ?? null;
 
-                $this->command->info(
-                    "  ✅ Profile '{$profile->slug}' synced (" . count($roleIds) . " roles)"
-                );
+                    // Get existing roles that are NOT from IKP
+                    $existingRoleIds = $profile->roles()->pluck('application_roles.id')->toArray();
+                    $siimutRoleIds = [];
+
+                    if ($siimutAppId) {
+                        $siimutRoleIds = collect($existingRoleIds)
+                            ->filter(function ($id) use ($roles, $siimutAppId) {
+                                return $roles->get($siimutAppId, collect())->pluck('id')->contains($id);
+                            })
+                            ->toArray();
+                    }
+
+                    // Merge siimut roles with new ikp roles
+                    $finalRoleIds = array_merge($siimutRoleIds, $roleIds);
+                    $profile->roles()->sync($finalRoleIds);
+
+                    $this->command->info(
+                        "  ✅ Profile '{$profile->slug}' synced (" . count($roleIds) . " IKP roles)"
+                    );
+                }
             }
         }
+
+        $this->command->info("✅ IKP Access Profile seeding completed!");
     }
 }

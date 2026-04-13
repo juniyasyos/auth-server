@@ -1,0 +1,70 @@
+[
+    {
+        "profile": {
+            "slug": "super_admin",
+            "name": "Super Admin",
+            "description": "Memiliki hak akses penuh terhadap seluruh fitur dan konfigurasi sistem.",
+            "is_system": true
+        },
+        "apps": {
+            "siimut": [
+                {
+                    "slug": "super_admin",
+                    "name": "Super Admin",
+                    "description": "Hak penuh seluruh sistem"
+                }
+            ]
+        }
+    },
+    {
+        "profile": {
+            "slug": "tim_mutu",
+            "name": "Tim Mutu",
+            "description": "Mengelola dan evaluasi indikator mutu rumah sakit.",
+            "is_system": true
+        },
+        "apps": {
+            "siimut": [
+                {
+                    "slug": "tim_mutu",
+                    "name": "Tim Mutu",
+                    "description": "Fokus pada indikator mutu"
+                }
+            ]
+        }
+    },
+    {
+        "profile": {
+            "slug": "validator_pic",
+            "name": "Unit Kerja: PIC Indikator",
+            "description": "Validasi dan monitoring indikator unit kerja.",
+            "is_system": false
+        },
+        "apps": {
+            "siimut": [
+                {
+                    "slug": "validator_pic",
+                    "name": "Validator PIC",
+                    "description": "Validasi data indikator"
+                }
+            ]
+        }
+    },
+    {
+        "profile": {
+            "slug": "pengumpul_data",
+            "name": "Unit Kerja: Pengumpul Data",
+            "description": "Mengumpulkan dan input data operasional.",
+            "is_system": false
+        },
+        "apps": {
+            "siimut": [
+                {
+                    "slug": "pengumpul_data",
+                    "name": "Pengumpul Data",
+                    "description": "Input data indikator"
+                }
+            ]
+        }
+    }
+]

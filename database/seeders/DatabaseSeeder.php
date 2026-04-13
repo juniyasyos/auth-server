@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             IamRolesSeeder::class,                // Create IAM roles per application
             AccessProfileSeeder::class,           // Create access profiles and map to roles
             UserAccessProfileSeeder::class,       // Assign access profiles to users ✅ ENABLE
+            IkpAccessProfileSeeder::class,        // Seed IKP-specific access profiles
             // IamUserRoleAssignmentsSeeder::class,  // Assign IAM roles to users directly
             PassportSeeder::class,                // Create Passport clients
         ]);
