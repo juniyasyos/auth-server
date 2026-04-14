@@ -11,6 +11,8 @@ class AccessProfilesChart extends ApexChartWidget
 
     protected static ?string $heading = 'Access Profiles Distribution';
 
+    protected int|string|array $columnSpan = 'full';
+
     protected function getOptions(): array
     {
         // Get access profiles with user counts

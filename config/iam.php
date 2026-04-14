@@ -241,6 +241,20 @@ return [
     'user_sync_force_pull' => env('IAM_USER_SYNC_FORCE_PULL', false),
 
     /*
+    |------------------------------------------------------------------------
+    | Password Field Sync Control
+    |------------------------------------------------------------------------
+    |
+    | When enabled, password changes will trigger user synchronization to
+    | client applications. Disable this if client applications manage their
+    | own password hashing and you don't want to re-hash IAM passwords.
+    |
+    | Default: false (password changes do NOT trigger client sync)
+    | Set to true to enable password sync on IAM updates.
+    */
+    'user_sync_password_field' => env('IAM_USER_SYNC_PASSWORD_FIELD', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Default User Roles
     |--------------------------------------------------------------------------

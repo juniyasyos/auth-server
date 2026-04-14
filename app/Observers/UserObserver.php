@@ -18,8 +18,15 @@ class UserObserver
         'name',
         'email',
         'active',
-        'password',
     ];
+
+    public function __construct()
+    {
+        // Conditionally include password field based on config
+        if (config('iam.user_sync_password_field', false)) {
+            $this->syncAttributes[] = 'password';
+        }
+    }
 
     public function saved(User $user): void
     {
