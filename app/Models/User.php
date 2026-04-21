@@ -10,6 +10,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
+use App\Models\Session as AuthSession;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
@@ -206,6 +210,77 @@ class User extends Authenticatable
             ->unique()
             ->values()
             ->toArray();
+    }
+
+    public function hasActiveSession(): bool
+    {
+        return $this->getLatestActiveSession() !== null;
+    }
+
+    public function getLatestActiveSession(): ?\stdClass
+    {
+        $lifetimeSeconds = config('session.lifetime') * 60;
+
+        return DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->where('last_activity', '>=', now()->subSeconds($lifetimeSeconds)->getTimestamp())
+            ->orderByDesc('last_activity')
+            ->first();
+    }
+
+    public function getActiveSessionLastActivity(): ?Carbon
+    {
+        $session = $this->getLatestActiveSession();
+
+        if (! $session) {
+            return null;
+        }
+
+        return Carbon::createFromTimestamp($session->last_activity);
+    }
+
+    public function getActiveSessionExpiresAt(): ?Carbon
+    {
+        $lastActivity = $this->getActiveSessionLastActivity();
+
+        return $lastActivity ? $lastActivity->copy()->addSeconds(config('session.lifetime') * 60) : null;
+    }
+
+    public function getActiveSessionDetails(): ?string
+    {
+        $lastActivity = $this->getActiveSessionLastActivity();
+        $expiresAt = $this->getActiveSessionExpiresAt();
+
+        if (! $lastActivity || ! $expiresAt) {
+            return null;
+        }
+
+        return sprintf(
+            'Terakhir aktif: %s • Kedaluwarsa: %s',
+            $lastActivity->format('d M Y H:i:s'),
+            $expiresAt->format('d M Y H:i:s')
+        );
+    }
+
+    public function terminateSessions(): int
+    {
+        $sessions = AuthSession::where('user_id', $this->id)->get();
+        $count = $sessions->count();
+
+        Log::info('session.user_terminate', [
+            'user_id' => $this->id,
+            'user_nip' => $this->nip,
+            'user_email' => $this->email,
+            'sessions_deleted' => $count,
+        ]);
+
+        if ($count === 0) {
+            return 0;
+        }
+
+        $sessions->each->delete();
+
+        return $count;
     }
 
     public function hasActiveAccessProfiles(): bool

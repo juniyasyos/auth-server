@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8010';
+const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,

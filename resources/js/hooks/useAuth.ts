@@ -25,11 +25,10 @@ export const useAuth = () => {
     const logout = useCallback(async () => {
         try {
             await store.logout();
-            await router.post('/logout');
         } catch (error) {
             console.error('Logout error:', error);
-            // Force redirect to login page even if error occurred
-            window.location.href = '/';
+        } finally {
+            window.location.href = '/logout';
         }
     }, [store]);
 

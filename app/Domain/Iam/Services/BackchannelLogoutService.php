@@ -108,7 +108,7 @@ class BackchannelLogoutService
                     'decision' => $reason,
                 ]);
 
-                return ! $hasAccess;
+                return $hasAccess;
             });
 
         if ($applications->isEmpty()) {

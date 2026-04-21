@@ -26,6 +26,7 @@ use App\Jobs\SyncApplicationUsers;
 use App\Domain\Iam\Models\Application;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Carbon;
 
 class UsersTable
 {
@@ -35,6 +36,7 @@ class UsersTable
             ->heading('Manajemen Pengguna')
             ->description('Kelola akun IAM, hak akses aplikasi, dan status keamanan pengguna.')
             ->defaultSort('updated_at', 'desc')
+            ->poll('2s')
             ->paginated([10, 25, 50, 100, 'all'])
             ->defaultPaginationPageOption(25)
             ->striped()
@@ -66,6 +68,7 @@ class UsersTable
                         return collect($unitKerjas)
                             ->implode(', ');
                     })
+                    ->weight('semibold')
                     ->color('slate')
                     ->tooltip('Unit kerja yang menjadi tempat tugas pengguna.')
                     ->wrap()
@@ -123,6 +126,62 @@ class UsersTable
                     ->tooltip(fn(User $record) => $record->active ? 'Akun aktif' : 'Akun nonaktif')
                     ->toggleable(),
 
+                // LOGIN AKTIF
+                TextColumn::make('session_active')
+                    ->label('Login Aktif')
+                    ->getStateUsing(function (User $record) {
+                        if (! $record->hasActiveSession()) {
+                            return 'Tidak login';
+                        }
+
+                        $start = $record->getActiveSessionLastActivity();
+                        $end = $record->getActiveSessionExpiresAt();
+
+                        return ($start && $end && now()->between($start, $end))
+                            ? 'Sedang login'
+                            : 'Sesi berakhir';
+                    })
+                    ->description(function (User $record) {
+                        if (! $record->hasActiveSession()) {
+                            return 'Tidak ada sesi login aktif';
+                        }
+
+                        $start = $record->getActiveSessionLastActivity();
+                        $end = $record->getActiveSessionExpiresAt();
+
+                        if (! $start || ! $end) {
+                            return 'Tidak ada sesi login aktif';
+                        }
+
+                        if (! now()->between($start, $end)) {
+                            return 'Sesi sudah berakhir';
+                        }
+
+                        $remainingMinutes = now()->diffInMinutes($end, false);
+                        $remainingText = $remainingMinutes > 0
+                            ? ($remainingMinutes >= 60
+                                ? intval($remainingMinutes / 60) . ' jam ' . ($remainingMinutes % 60 ? ($remainingMinutes % 60) . ' menit' : '')
+                                : $remainingMinutes . ' menit')
+                            : 'kurang dari 1 menit';
+
+                        return "{$start->format('H:i')} - {$end->format('H:i')} (expired dalam waktu {$remainingText})";
+                    })
+                    ->tooltip(function (User $record) {
+                        if (! $record->hasActiveSession()) {
+                            return 'Tidak ada sesi login aktif';
+                        }
+
+                        $start = $record->getActiveSessionLastActivity();
+                        $end = $record->getActiveSessionExpiresAt();
+
+                        if (! $start || ! $end) {
+                            return 'Tidak ada sesi login aktif';
+                        }
+
+                        return "{$start->format('H:i')} - {$end->format('H:i')}";
+                    })
+                    ->toggleable(),
+
                 // MFA / TWO FACTOR
                 IconColumn::make('mfa_enabled')
                     ->label('MFA')
@@ -133,7 +192,7 @@ class UsersTable
                     ->trueColor('success')
                     ->falseColor('gray')
                     ->tooltip(fn(User $record) => ! empty($record->two_factor_secret ?? null) ? 'MFA aktif' : 'MFA tidak aktif')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 // UPDATED AT
                 TextColumn::make('updated_at')
@@ -141,7 +200,7 @@ class UsersTable
                     ->dateTime('d M Y H:i')
                     ->sortable()
                     ->color('gray')
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 TernaryFilter::make('active')
@@ -213,6 +272,21 @@ class UsersTable
 
                     EditAction::make()
                         ->label('Edit'),
+
+                    Action::make('terminateSession')
+                        ->label('Hapus Sesi')
+                        ->icon('heroicon-m-arrow-left-end-on-rectangle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->visible(fn(User $record) => $record->hasActiveSession())
+                        ->action(function (User $record) {
+                            $deleted = $record->terminateSessions();
+
+                            Notification::make()
+                                ->title($deleted ? 'Sesi login pengguna dihapus' : 'Tidak ditemukan sesi aktif')
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ])
             ->toolbarActions([

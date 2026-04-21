@@ -28,7 +28,7 @@ return [
     ],
 
     'allowed_origins_patterns' => [
-        env('FRONTEND_HOST_PATTERN', '/localhost|192\.168/'),
+        env('FRONTEND_HOST_PATTERN', '/localhost|127\.0\.0\.1|192\.168/'),
     ],
 
     'allowed_headers' => ['*'],

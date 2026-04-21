@@ -27,9 +27,11 @@ class NotifyClientsOfLogout implements ShouldQueue
             return;
         }
 
+        $allowedAppKeys = $this->user->accessibleApps();
         $apps = Application::enabled()
+            ->whereIn('app_key', $allowedAppKeys)
+            ->whereNotNull('backchannel_logout_uri')
             ->get()
-            ->filter(fn(Application $a) => ! empty($a->backchannel_logout_uri))
             ->values();
 
         $timestamp = Carbon::now()->toIso8601String();
@@ -96,17 +98,13 @@ class NotifyClientsOfLogout implements ShouldQueue
                     'user_id' => $this->user->getKey(),
                     'status' => $response->status() ?? 200,
                 ]);
-            } catch (RequestException $e) {
-                $resp = $e->response();
-
+            } catch (\Throwable $e) {
                 Log::warning('backchannel_logout_failed', [
                     'request_id' => $requestId,
                     'uri' => $uri,
                     'app_key' => $app->app_key,
                     'user_id' => $this->user->getKey(),
                     'error' => $e->getMessage(),
-                    'response_status' => $resp?->status(),
-                    'response_body_preview' => $resp?->body() ? substr($resp->body(), 0, 300) : null,
                 ]);
             }
         }

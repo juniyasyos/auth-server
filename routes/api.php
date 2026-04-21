@@ -28,22 +28,22 @@ Route::post('/auth/session-from-token', SessionFromTokenController::class);
 
 // Protected auth routes (internal use only)
 // These use Passport guard - don't access with SSO tokens
-// Route::middleware('auth:api')->prefix('auth')->group(function () {
-//     Route::get('/me', [AuthController::class, 'me']);
-//     Route::post('/logout', [AuthController::class, 'logout']);
-//     Route::post('/refresh', [AuthController::class, 'refresh']);
-// });
+Route::middleware('auth:api')->prefix('auth')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
+});
 
 // Protected user routes - removed Passport auth:api
 // Use SSO JWT validation instead or no auth at all for public endpoints
-// Route::middleware('auth:api')->group(function () {
-//     Route::get('/users/me', UserInfoController::class);
-//     Route::get('/user', UserInfoController::class);
-//     Route::get('/users/applications', [UserInfoController::class, 'applications'])
-//         ->name('users.applications');
-//     Route::get('/users/applications/detail', [UserInfoController::class, 'applicationsDetail'])
-//         ->name('users.applications.detail');
-// });
+Route::middleware('auth:api')->group(function () {
+    Route::get('/users/me', UserInfoController::class);
+    Route::get('/user', UserInfoController::class);
+    Route::get('/users/applications', [UserInfoController::class, 'applications'])
+        ->name('users.applications');
+    Route::get('/users/applications/detail', [UserInfoController::class, 'applicationsDetail'])
+        ->name('users.applications.detail');
+});
 
 // SSO Routes for Admin Panel access
 Route::prefix('sso')->group(function () {

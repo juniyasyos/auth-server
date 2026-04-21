@@ -18,7 +18,20 @@ export const authService = {
     },
 
     async logout(): Promise<void> {
-        await api.post('/api/auth/logout');
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            return;
+        }
+
+        try {
+            await api.post('/api/auth/logout');
+        } catch (error: any) {
+            if (error.response?.status === 401) {
+                // Token already invalid/expired, ignore and continue logout.
+                return;
+            }
+            throw error;
+        }
     },
 
     async refreshToken(): Promise<AuthResponse> {
