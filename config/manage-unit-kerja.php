@@ -23,5 +23,11 @@ return [
         'active' => env('MANAGE_UNIT_KERJA_SYNC_ACTIVE', true),
     ],
 
+    'push' => [
+        'active' => env('MANAGE_UNIT_KERJA_PUSH_ACTIVE', true),
+        'path' => env('MANAGE_UNIT_KERJA_PUSH_PATH', 'client/push'),
+        'middleware' => env('MANAGE_UNIT_KERJA_PUSH_MIDDLEWARE', 'api') ? explode(',', env('MANAGE_UNIT_KERJA_PUSH_MIDDLEWARE', 'api')) : ['api'],
+    ],
+
     'navigation_sort' => 0,
 ];

@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Jobs\SyncApplicationUsers;
+use App\Jobs\PushUnitKerjaToClient;
 use App\Models\UnitKerja;
 use Illuminate\Support\Facades\Log;
 
@@ -40,6 +40,6 @@ class UnitKerjaObserver
             'event' => $event,
         ]);
 
-        SyncApplicationUsers::dispatch([], [], [], null);
+        PushUnitKerjaToClient::dispatch([], $unitKerja->getKey());
     }
 }
