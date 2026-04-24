@@ -14,7 +14,9 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Guava\FilamentModalRelationManagers\Actions\RelationManagerAction;
@@ -114,17 +116,23 @@ class UsersTable
                     ->tooltip('Ringkasan jumlah aplikasi terhubung dan profil akses global pengguna.')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // STATUS AKUN
-                ToggleColumn::make('active')
-                    ->label('Status')
-                    ->onColor('success')
-                    ->offColor('secondary')
-                    ->onIcon('heroicon-m-check-badge')
-                    ->offIcon('heroicon-m-no-symbol')
-                    ->afterStateUpdated(fn(User $record, bool $state) => $record->refresh())
+                TextColumn::make('status')
+                    ->label('Status Pengguna')
+                    ->badge()
+                    ->color(fn(User $record) => match ($record->status) {
+                        'active' => 'success',
+                        'inactive' => 'warning',
+                        'suspended' => 'danger',
+                        default => 'secondary',
+                    })
                     ->sortable()
-                    ->tooltip(fn(User $record) => $record->active ? 'Akun aktif' : 'Akun nonaktif')
-                    ->toggleable(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('phone_number')
+                    ->label('Telepon')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->wrap(),
 
                 // LOGIN AKTIF
                 TextColumn::make('session_active')
@@ -203,10 +211,13 @@ class UsersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                TernaryFilter::make('active')
-                    ->label('Status akun')
-                    ->trueLabel('Aktif')
-                    ->falseLabel('Nonaktif')
+                SelectFilter::make('status')
+                    ->label('Status pengguna')
+                    ->options([
+                        'active' => 'Aktif',
+                        'inactive' => 'Nonaktif',
+                        'suspended' => 'Ditangguhkan',
+                    ])
                     ->placeholder('Semua'),
 
                 TernaryFilter::make('mfa_enabled')
@@ -220,40 +231,17 @@ class UsersTable
                     ->falseLabel('MFA tidak aktif')
                     ->placeholder('Semua'),
 
-                Filter::make('updated_between')
-                    ->label('Rentang pembaruan')
-                    ->schema([
-                        DatePicker::make('from')
-                            ->label('Dari tanggal')
-                            ->native(false),
-                        DatePicker::make('until')
-                            ->label('Sampai tanggal')
-                            ->native(false),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when($data['from'] ?? null, fn(Builder $q, $date) => $q->whereDate('updated_at', '>=', $date))
-                            ->when($data['until'] ?? null, fn(Builder $q, $date) => $q->whereDate('updated_at', '<=', $date));
-                    })
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
-
-                        if (! empty($data['from'])) {
-                            $indicators[] = 'Diperbarui sejak ' . $data['from'];
-                        }
-
-                        if (! empty($data['until'])) {
-                            $indicators[] = 'Diperbarui hingga ' . $data['until'];
-                        }
-
-                        return $indicators;
-                    }),
-
                 Filter::make('never_logged_in')
                     ->label('Belum pernah login')
-                    ->query(fn(Builder $query) => $query->whereNull('last_login_at')),
+                    ->query(function (Builder $query) {
+                        return $query->whereNotExists(function ($subQuery) {
+                            $subQuery->selectRaw('1')
+                                ->from('sessions')
+                                ->whereColumn('sessions.user_id', 'users.id');
+                        });
+                    }),
             ])
-            ->filtersFormColumns(3)
+            ->filtersFormColumns(1)
             ->recordActions([
                 // ImpersonateTableAction::make()
                 //     ->label('Impersonate')
@@ -272,6 +260,26 @@ class UsersTable
 
                     EditAction::make()
                         ->label('Edit'),
+
+                    Action::make('setStatus')
+                        ->label('Ubah Status')
+                        ->icon('heroicon-m-adjustments-horizontal')
+                        ->schema([
+                            Select::make('status')
+                                ->label('Status Pengguna')
+                                ->options([
+                                    'active' => 'Aktif',
+                                    'inactive' => 'Nonaktif',
+                                    'suspended' => 'Ditangguhkan',
+                                ])
+                                ->required()
+                                ->default(fn(User $record) => $record->status),
+                        ])
+                        ->action(function (User $record, array $data): void {
+                            $record->update(['status' => $data['status']]);
+                        })
+                        ->modalHeading('Ubah Status Pengguna')
+                        ->modalDescription('Pilih status yang diinginkan untuk pengguna ini.'),
 
                     Action::make('terminateSession')
                         ->label('Hapus Sesi')
@@ -297,7 +305,7 @@ class UsersTable
                         ->color('success')
                         ->requiresConfirmation()
                         ->deselectRecordsAfterCompletion()
-                        ->action(fn(Collection $records) => $records->each->update(['active' => true])),
+                        ->action(fn(Collection $records) => $records->each->update(['status' => 'active'])),
 
                     BulkAction::make('deactivate')
                         ->label('Nonaktifkan')
@@ -305,7 +313,7 @@ class UsersTable
                         ->color('secondary')
                         ->requiresConfirmation()
                         ->deselectRecordsAfterCompletion()
-                        ->action(fn(Collection $records) => $records->each->update(['active' => false])),
+                        ->action(fn(Collection $records) => $records->each->update(['status' => 'inactive'])),
 
                     DeleteBulkAction::make()
                         ->label('Hapus')

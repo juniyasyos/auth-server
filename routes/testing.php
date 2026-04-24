@@ -434,7 +434,7 @@ Route::get('/test-stats', function () {
     return response()->json([
         'database_statistics' => [
             'users' => User::count(),
-            'active_users' => User::where('active', true)->count(),
+            'active_users' => User::where('status', 'active')->count(),
             'roles' => \Spatie\Permission\Models\Role::count(),
             'permissions' => \Spatie\Permission\Models\Permission::count(),
             'applications' => Application::count(),

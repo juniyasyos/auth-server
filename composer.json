@@ -17,6 +17,7 @@
         "laravel/passport": "^12",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
+        "league/flysystem-aws-s3-v3": "^3.32",
         "leandrocfe/filament-apex-charts": "^5.0",
         "spatie/laravel-activitylog": "^4",
         "spatie/laravel-medialibrary": "^11.0",

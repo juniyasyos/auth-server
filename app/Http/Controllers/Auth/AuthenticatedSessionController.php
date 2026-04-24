@@ -96,8 +96,30 @@ class AuthenticatedSessionController extends Controller
                 return to_route('two-factor.login');
             }
 
+            if ($user->status !== 'active') {
+                $reason = $user->status === 'suspended'
+                    ? 'Akun Anda telah ditangguhkan oleh administrator.'
+                    : 'Akun Anda sedang dinonaktifkan oleh administrator.';
+
+                return redirect()->route('account.status')
+                    ->with('inactive_reason', $reason);
+            }
+
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
+
+            session()->put('user_status', $user->status);
+            session()->put('user_id', $user->id);
+
+            if ($request->hasSession() && $request->session()->getId()) {
+                $sessionModel = Session::find($request->session()->getId());
+
+                if ($sessionModel) {
+                    $sessionModel->user_id = $user->id;
+                    $sessionModel->is_active = true;
+                    $sessionModel->save();
+                }
+            }
 
             // Log successful login
             $this->logger->logLoginSuccess(
@@ -195,8 +217,12 @@ class AuthenticatedSessionController extends Controller
                 });
 
             if ($request->hasSession() && $request->session()->getId()) {
-                Session::where('id', $request->session()->getId())
-                    ->update(['is_active' => false]);
+                $sessionModel = Session::find($request->session()->getId());
+
+                if ($sessionModel) {
+                    $sessionModel->is_active = false;
+                    $sessionModel->save();
+                }
             }
 
             Cache::put("user_logout_at:{$user->id}", time());

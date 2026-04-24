@@ -8,6 +8,20 @@ use Illuminate\Support\Facades\Log;
 
 class SessionObserver
 {
+    public function created(Session $session): void
+    {
+        $this->updateUserLoginState($session);
+    }
+
+    public function updated(Session $session): void
+    {
+        if (! $session->wasChanged(['user_id', 'is_active'])) {
+            return;
+        }
+
+        $this->updateUserLoginState($session, $session->getOriginal());
+    }
+
     public function deleted(Session $session): void
     {
         if (! $session->user_id) {
@@ -34,5 +48,25 @@ class SessionObserver
             'user_nip' => $user->nip,
             'user_email' => $user->email,
         ]);
+    }
+
+    private function updateUserLoginState(Session $session, array $original = []): void
+    {
+        if (! $session->user_id) {
+            return;
+        }
+
+        $user = User::find($session->user_id);
+        if (! $user) {
+            return;
+        }
+
+        if ($session->is_active) {
+            $user->recordLastLogin();
+
+            return;
+        }
+
+        $user->recordLastLogout();
     }
 }

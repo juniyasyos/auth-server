@@ -6,6 +6,7 @@ use App\Models\User;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -24,39 +25,71 @@ class UserInfolist
                         // ====================================
                         Section::make('Profil Pengguna')
                             ->icon('heroicon-m-user-circle')
-                            ->description('Informasi identitas dasar dan status keaktifan pengguna.')
+                            ->description('Informasi identitas dasar dan status pengguna.')
                             ->headerActions([])
                             ->schema([
-                                TextEntry::make('name')
-                                    ->label('Nama Lengkap')
-                                    ->weight('medium')
-                                    ->icon('heroicon-m-identification')
-                                    ->extraAttributes(['class' => 'text-gray-900 dark:text-gray-100 text-base']),
+                                Fieldset::make('Identitas')
+                                    ->schema([
+                                        TextEntry::make('name')
+                                            ->label('Nama Lengkap')
+                                            ->weight('medium')
+                                            ->icon('heroicon-m-identification')
+                                            ->extraAttributes(['class' => 'text-gray-900 dark:text-gray-100 text-base']),
 
-                                TextEntry::make('nip')
-                                    ->label('NIP')
-                                    ->copyable()
-                                    ->copyMessage('NIP berhasil disalin')
-                                    ->icon('heroicon-m-hashtag')
-                                    ->extraAttributes(['class' => 'text-primary-600 dark:text-primary-400 font-medium']),
+                                        TextEntry::make('nip')
+                                            ->label('NIP')
+                                            ->copyable()
+                                            ->copyMessage('NIP berhasil disalin')
+                                            ->icon('heroicon-m-hashtag')
+                                            ->extraAttributes(['class' => 'text-primary-600 dark:text-primary-400 font-medium']),
 
-                                TextEntry::make('email')
-                                    ->label('Email')
-                                    ->copyable()
-                                    ->copyMessage('Email berhasil disalin')
-                                    ->icon('heroicon-m-envelope')
-                                    ->placeholder('Tidak ada email')
-                                    ->extraAttributes(['class' => 'text-gray-600 dark:text-gray-400']),
+                                        TextEntry::make('email')
+                                            ->label('Email')
+                                            ->copyable()
+                                            ->copyMessage('Email berhasil disalin')
+                                            ->icon('heroicon-m-envelope')
+                                            ->placeholder('Tidak ada email')
+                                            ->extraAttributes(['class' => 'text-gray-600 dark:text-gray-400']),
 
-                                IconEntry::make('active')
-                                    ->label('Status Akun')
-                                    ->boolean()
-                                    ->trueIcon('heroicon-m-check-badge')
-                                    ->falseIcon('heroicon-m-x-circle')
-                                    ->trueColor('success')
-                                    ->falseColor('danger')
+                                        TextEntry::make('status')
+                                            ->label('Status Pengguna')
+                                            ->badge()
+                                            ->placeholder('Tidak ada status'),
+                                    ]),
+
+                                Fieldset::make('Detail Pribadi')
+                                    ->schema([
+                                        TextEntry::make('place_of_birth')
+                                            ->label('Tempat Lahir')
+                                            ->placeholder('Tidak ada tempat lahir')
+                                            ->icon('heroicon-m-map-pin'),
+
+                                        TextEntry::make('date_of_birth')
+                                            ->label('Tanggal Lahir')
+                                            ->date()
+                                            ->placeholder('Tidak ada tanggal lahir')
+                                            ->icon('heroicon-m-calendar'),
+
+                                        TextEntry::make('gender')
+                                            ->label('Jenis Kelamin')
+                                            ->placeholder('Tidak ada jenis kelamin')
+                                            ->icon('heroicon-m-gender-male-female'),
+
+                                        TextEntry::make('phone_number')
+                                            ->label('Nomor Telepon')
+                                            ->placeholder('Tidak ada nomor telepon')
+                                            ->icon('heroicon-m-phone'),
+                                    ]),
+
+                                Fieldset::make('Alamat')
+                                    ->schema([
+                                        TextEntry::make('address_ktp')
+                                            ->label('Alamat KTP')
+                                            ->placeholder('Tidak ada alamat KTP')
+                                            ->icon('heroicon-m-map'),
+                                    ]),
                             ])
-                            ->columns(2)
+                            ->columns(1)
                             ->compact(),
 
                         // ====================================
@@ -159,6 +192,20 @@ class UserInfolist
                                     ->dateTime()
                                     ->color('gray')
                                     ->icon('heroicon-m-clock')
+                                    ->columnSpan(1),
+
+                                TextEntry::make('last_login_at')
+                                    ->label('Terakhir Login')
+                                    ->dateTime()
+                                    ->placeholder('Belum pernah login')
+                                    ->icon('heroicon-m-arrow-down-left')
+                                    ->columnSpan(1),
+
+                                TextEntry::make('last_logout_at')
+                                    ->label('Terakhir Logout')
+                                    ->dateTime()
+                                    ->placeholder('Belum pernah logout')
+                                    ->icon('heroicon-m-arrow-up-right')
                                     ->columnSpan(1),
                             ])
                             ->columns(2)

@@ -57,8 +57,8 @@ class PanelPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Panel/Widgets'), for: 'App\Filament\Panel\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                // AccountWidget::class,
+                // FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -74,6 +74,7 @@ class PanelPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 \App\Http\Middleware\Authenticate::class,
+                \App\Http\Middleware\BlockInactiveUser::class,
                 \App\Http\Middleware\CheckIAMAdmin::class, // Only IAM admins can access
             ]);
 

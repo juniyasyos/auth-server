@@ -12,7 +12,25 @@ Route::get('/', function () {
         : Redirect::to('/login');
 })->name('home');
 
-Route::middleware(['web', 'auth'])->group(function () {
+Route::get('/account-status', function (\Illuminate\Http\Request $request) {
+    $user = $request->user();
+    $reason = $request->session()->pull('inactive_reason');
+
+    if (! $reason) {
+        $reason = match ($user?->status) {
+            'inactive' => 'Akun Anda sedang dinonaktifkan oleh administrator.',
+            'suspended' => 'Akun Anda telah ditangguhkan oleh administrator.',
+            default => 'Akun Anda tidak dapat mengakses sistem saat ini. Mohon hubungi administrator.',
+        };
+    }
+
+    return Inertia::render('auth/Inactive', [
+        'reason' => $reason,
+        'status' => $user?->status,
+    ]);
+})->name('account.status');
+
+Route::middleware(['web', 'auth', \App\Http\Middleware\BlockInactiveUser::class])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
         ->name('dashboard');
 });

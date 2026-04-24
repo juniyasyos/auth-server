@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 return [
     'web' => function (): void {
-        Route::middleware(['auth', SsoLoggingMiddleware::class])
+        Route::middleware(['auth', \App\Http\Middleware\BlockInactiveUser::class, SsoLoggingMiddleware::class])
             ->group(function (): void {
                 Route::get('/sso/redirect', SsoRedirectController::class)
                     ->name('sso.redirect');

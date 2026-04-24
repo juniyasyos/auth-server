@@ -4,15 +4,15 @@ return [
     // Navigasi & Label Umum
     'navigation' => [
         'group' => 'IAM Management',
-        'title' => 'Unit Kerja',
-        'plural' => 'Unit Kerja',
-        'description' => 'Kelola unit kerja dalam sistem dengan efisien.',
+        'title' => 'Departements',
+        'plural' => 'Departements',
+        'description' => 'Kelola Departements dalam sistem dengan efisien.',
     ],
 
     // Kolom/Form Field
     'fields' => [
         'id' => 'ID',
-        'unit_name' => 'Nama Unit Kerja',
+        'unit_name' => 'Nama Departement',
         'description' => 'Deskripsi',
         'created_at' => 'Dibuat Pada',
         'updated_at' => 'Diperbarui Pada',
@@ -24,15 +24,15 @@ return [
     // Bagian Formulir
     'form' => [
         'unit' => [
-            'title' => 'Informasi Unit Kerja',
-            'description' => 'Isi detail unit kerja dengan benar.',
-            'name_placeholder' => 'Masukkan nama unit kerja',
-            'description_placeholder' => 'Tambahkan deskripsi singkat tentang unit kerja ini',
-            'helper_text' => 'Nama unit harus unik dan maksimal 100 karakter.',
+            'title' => 'Informasi Departement',
+            'description' => 'Isi detail departement dengan benar.',
+            'name_placeholder' => 'Masukkan nama departement',
+            'description_placeholder' => 'Tambahkan deskripsi singkat tentang departement ini',
+            'helper_text' => 'Nama departement harus unik dan maksimal 100 karakter.',
         ],
         'users' => [
-            'title' => 'Pengguna dalam Unit Kerja',
-            'description' => 'Tambahkan pengguna ke unit kerja ini.',
+            'title' => 'Pengguna dalam Departement',
+            'description' => 'Tambahkan pengguna ke departement ini.',
             'search_placeholder' => 'Cari pengguna...',
             'add_button' => 'Tambahkan Pengguna',
             'remove_button' => 'Hapus Pengguna',
@@ -41,6 +41,6 @@ return [
 
     'actions' => [
         'attach' => 'Kaitkan Pengguna',
-        'add' => 'Tambah Unit Kerja',
+        'add' => 'Tambah Departement',
     ],
 ];

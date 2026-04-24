@@ -68,6 +68,17 @@ class SSOController extends Controller
             ]);
         }
 
+        // Cegah user nonaktif / tersuspend mengakses client
+        if (Auth::user()->status !== 'active') {
+            $reason = Auth::user()->status === 'suspended'
+                ? 'Akun Anda telah ditangguhkan oleh administrator.'
+                : 'Akun Anda sedang dinonaktifkan oleh administrator.';
+
+            return redirect()
+                ->route('account.status')
+                ->with('inactive_reason', $reason);
+        }
+
         // Generate authorization code
         $authCode = Str::random(64);
         $codeData = [

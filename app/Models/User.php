@@ -36,9 +36,18 @@ class User extends Authenticatable
     protected $fillable = [
         'nip',
         'name',
+        'place_of_birth',
+        'date_of_birth',
+        'gender',
+        'address_ktp',
+        'phone_number',
         'email',
         'password',
-        'active',
+        'status',
+        'avatar_url',
+        'ttd_url',
+        'last_login_at',
+        'last_logout_at',
     ];
 
     /**
@@ -60,9 +69,25 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'last_logout_at' => 'datetime',
             'password' => 'hashed',
-            'active' => 'boolean',
         ];
+    }
+
+    public function recordLastLogin(): bool
+    {
+        $this->last_login_at = now();
+        $this->last_logout_at = null;
+
+        return $this->save();
+    }
+
+    public function recordLastLogout(): bool
+    {
+        $this->last_logout_at = now();
+
+        return $this->save();
     }
 
     /**

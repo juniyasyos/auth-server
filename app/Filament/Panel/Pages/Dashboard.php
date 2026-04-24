@@ -3,8 +3,8 @@
 namespace App\Filament\Panel\Pages;
 
 use App\Filament\Panel\Widgets\AccessProfilesChart;
+use App\Filament\Panel\Widgets\ApplicationAccessSummary;
 use App\Filament\Panel\Widgets\ProfileRoleConfigurationMap;
-use App\Filament\Panel\Widgets\RecentActivities;
 use App\Filament\Panel\Widgets\StatsOverview;
 use App\Filament\Panel\Widgets\UserAssignmentCoverageStatus;
 use BackedEnum;
@@ -25,7 +25,7 @@ class Dashboard extends BaseDashboard
             UserAssignmentCoverageStatus::class,
             ProfileRoleConfigurationMap::class,
             AccessProfilesChart::class,
-            RecentActivities::class,
+            ApplicationAccessSummary::class,
         ];
     }
 

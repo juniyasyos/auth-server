@@ -3,8 +3,11 @@
 namespace App\Filament\Panel\Resources\Users\Schemas;
 
 use App\Models\User;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -17,93 +20,184 @@ class UserForm
     {
         return $schema
             ->components([
-                Group::make()
+                Grid::make(12)
                     ->columnSpanFull()
                     ->schema([
-                        // ====================================
-                        // IDENTITAS PENGGUNA
-                        // ====================================
-                        Section::make('Identitas Pengguna')
-                            ->description('Informasi dasar yang digunakan untuk mengenali pengguna di seluruh aplikasi IAM.')
+                        // =========================
+                        // KOLOM UTAMA (DATA INTI)
+                        // =========================
+                        Group::make()
+                            ->columnSpanFull()
                             ->schema([
-                                Grid::make(2)
+                                Section::make('Identitas Pengguna')
+                                    ->description('Data utama yang digunakan untuk identifikasi dan login.')
                                     ->schema([
-                                        TextInput::make('name')
-                                            ->label('Nama Lengkap')
-                                            ->placeholder('Mis. John Doe')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->autocapitalize('words')
-                                            ->autocomplete('name')
-                                            ->helperText('Gunakan nama lengkap sesuai identitas atau standar internal organisasi.')
-                                            ->hintIcon('heroicon-m-user-circle'),
+                                        Grid::make(2)
+                                            ->schema([
+                                                TextInput::make('name')
+                                                    ->label('Nama Lengkap')
+                                                    ->required()
+                                                    ->maxLength(255)
+                                                    ->placeholder('John Doe')
+                                                    ->autocapitalize('words')
+                                                    ->autocomplete('name')
+                                                    ->helperText('Nama lengkap sesuai identitas resmi.')
+                                                    ->suffixIcon('heroicon-m-user'),
 
-                                        TextInput::make('nip')
-                                            ->label('NIP')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->unique(
-                                                table: User::class,
-                                                column: 'nip',
-                                                ignoreRecord: true,
-                                            )
-                                            ->placeholder('Masukkan NIP pengguna')
-                                            ->autocomplete('username')
-                                            ->suffixIcon('heroicon-m-identification')
-                                            ->helperText('Nomor Induk Pegawai yang digunakan untuk login.')
-                                            ->hintIcon('heroicon-m-hashtag'),
+                                                TextInput::make('nip')
+                                                    ->label('NIP')
+                                                    ->required()
+                                                    ->unique(
+                                                        table: User::class,
+                                                        column: 'nip',
+                                                        ignoreRecord: true,
+                                                    )
+                                                    ->placeholder('199101012020031001')
+                                                    ->autocomplete('username')
+                                                    ->helperText('Nomor Induk Pegawai sebagai identitas login.')
+                                                    ->suffixIcon('heroicon-m-identification'),
+                                            ]),
 
-                                        TextInput::make('email')
-                                            ->label('Email (Opsional)')
-                                            ->email()
-                                            ->nullable()
-                                            ->maxLength(255)
-                                            ->unique(
-                                                table: User::class,
-                                                column: 'email',
-                                                ignoreRecord: true,
-                                            )
-                                            ->placeholder('nama@perusahaan.com')
-                                            ->autocomplete('email')
-                                            ->suffixIcon('heroicon-m-envelope')
-                                            ->helperText('Email opsional untuk keperluan backup atau notifikasi.')
-                                            ->hintIcon('heroicon-m-at-symbol'),
+                                        Grid::make(1)
+                                            ->schema([
+                                                TextInput::make('email')
+                                                    ->email()
+                                                    ->label('Email')
+                                                    ->nullable()
+                                                    ->columnSpanFull()
+                                                    ->unique(
+                                                        table: User::class,
+                                                        column: 'email',
+                                                        ignoreRecord: true,
+                                                    )
+                                                    ->placeholder('email@domain.com')
+                                                    ->helperText('Email opsional untuk notifikasi dan pemulihan akun.')
+                                                    ->suffixIcon('heroicon-m-envelope'),
+                                            ]),
+                                    ]),
+
+                                Section::make('Informasi Pribadi')
+                                    ->description('Detail tambahan terkait identitas pengguna.')
+                                    ->schema([
+                                        Grid::make(2)
+                                            ->schema([
+                                                TextInput::make('place_of_birth')
+                                                    ->label('Tempat Lahir')
+                                                    ->placeholder('Jakarta')
+                                                    ->helperText('Kota atau kabupaten tempat lahir.')
+                                                    ->suffixIcon('heroicon-m-map-pin'),
+
+                                                DatePicker::make('date_of_birth')
+                                                    ->label('Tanggal Lahir')
+                                                    ->nullable()
+                                                    ->placeholder('Pilih tanggal lahir')
+                                                    ->helperText('Tanggal lahir pengguna.'),
+
+                                                Select::make('gender')
+                                                    ->label('Jenis Kelamin')
+                                                    ->options([
+                                                        'male' => 'Laki-laki',
+                                                        'female' => 'Perempuan',
+                                                        'other' => 'Lainnya',
+                                                    ])
+                                                    ->nullable()
+                                                    ->placeholder('Pilih jenis kelamin')
+                                                    ->helperText('Jenis kelamin untuk data demografis.'),
+
+                                                TextInput::make('phone_number')
+                                                    ->label('No. HP')
+                                                    ->tel()
+                                                    ->nullable()
+                                                    ->placeholder('+62 812 3456 7890')
+                                                    ->helperText('Nomor telepon yang dapat dihubungi.')
+                                                    ->suffixIcon('heroicon-m-phone'),
+                                            ]),
+
+                                        Textarea::make('address_ktp')
+                                            ->label('Alamat KTP')
+                                            ->rows(3)
+                                            ->columnSpanFull()
+                                            ->placeholder('Jalan, Kecamatan, Kota, Provinsi')
+                                            ->helperText('Alamat lengkap sesuai KTP untuk verifikasi identitas.'),
+                                    ]),
+
+                                Section::make('Keamanan Akun')
+                                    ->description('Pengaturan kredensial dan status akun.')
+                                    ->schema([
+                                        Grid::make(2)
+                                            ->schema([
+                                                TextInput::make('password')
+                                                    ->label('Password')
+                                                    ->password()
+                                                    ->revealable()
+                                                    ->rule(Password::default())
+                                                    ->required(fn(string $operation) => $operation === 'create')
+                                                    ->dehydrated(fn($state) => filled($state))
+                                                    ->placeholder(
+                                                        fn($operation) =>
+                                                        $operation === 'create'
+                                                            ? 'Minimal 8 karakter'
+                                                            : 'Kosongkan jika tidak diubah'
+                                                    )
+                                                    ->helperText('Kosongkan saat edit jika tidak ingin mengganti password.')
+                                                    ->suffixIcon('heroicon-m-key'),
+
+                                                Select::make('status')
+                                                    ->label('Status')
+                                                    ->options([
+                                                        'active' => 'Active',
+                                                        'inactive' => 'Inactive',
+                                                        'suspended' => 'Suspended',
+                                                    ])
+                                                    ->default('active')
+                                                    ->required()
+                                                    ->helperText('Pilih status akun untuk klasifikasi penggunaan.'),
+                                            ]),
                                     ]),
                             ]),
+                    ]),
 
-                        // ====================================
-                        // KEAMANAN & KREDENSIAL
-                        // ====================================
-                        Section::make('Keamanan & Kredensial')
-                            ->description('Atur password dan status keaktifan akun pengguna.')
+                // =========================
+                // SIDEBAR (DATA SEKUNDER)
+                // =========================
+                Group::make()
+                    ->columnSpan(4)
+                    ->schema([
+
+                        Section::make('Foto & Media')
+                            ->description('Unggah avatar dan tanda tangan digital pengguna.')
                             ->schema([
-                                Grid::make(2)
-                                    ->schema([
-                                        TextInput::make('password')
-                                            ->label('Password')
-                                            ->password()
-                                            ->revealable()
-                                            ->maxLength(255)
-                                            ->rule(Password::default())
-                                            ->required(fn(string $operation): bool => $operation === 'create')
-                                            ->dehydrated(fn(?string $state): bool => filled($state))
-                                            ->placeholder(fn(string $operation): ?string => $operation === 'create'
-                                                ? 'Minimal 8 karakter, kombinasi huruf & angka'
-                                                : 'Kosongkan jika tidak ingin mengubah password')
-                                            ->suffixIcon('heroicon-m-key')
-                                            ->helperText(fn(string $operation): string => $operation === 'create'
-                                                ? 'Wajib diisi saat membuat akun baru.'
-                                                : 'Kosongkan field ini jika tidak ingin mengganti password.')
-                                            ->hintIcon('heroicon-m-lock-closed'),
+                                FileUpload::make('avatar_url')
+                                    ->label('Avatar Pengguna')
+                                    ->disk(\App\Support\StorageFallback::isS3Available() ? 's3' : 'public')
+                                    ->directory('avatars')
+                                    ->image()
+                                    ->imageEditor()
+                                    ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/jpg'])
+                                    ->maxSize(2048)
+                                    ->helperText('Unggah foto profil pengguna. Gunakan format PNG/JPG.'),
 
-                                        Toggle::make('active')
-                                            ->label('Status Akun Aktif')
-                                            ->inline(false)
-                                            ->default(true)
-                                            ->nullable()
-                                            ->helperText('Nonaktifkan jika pengguna sudah tidak boleh mengakses sistem IAM.')
-                                            ->hintIcon('heroicon-m-exclamation-circle'),
-                                    ]),
+                                FileUpload::make('ttd_url')
+                                    ->label('Tanda Tangan')
+                                    ->disk(\App\Support\StorageFallback::isS3Available() ? 's3' : 'public')
+                                    ->directory('ttd')
+                                    ->image()
+                                    ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/jpg'])
+                                    ->maxSize(2048)
+                                    ->helperText('Unggah gambar tanda tangan berformat PNG atau JPG.'),
+                            ]),
+
+                        Section::make('Informasi Sistem')
+                            ->schema([
+                                TextInput::make('created_at')
+                                    ->label('Dibuat')
+                                    ->disabled()
+                                    ->visible(fn($operation) => $operation === 'edit'),
+
+                                TextInput::make('updated_at')
+                                    ->label('Diupdate')
+                                    ->disabled()
+                                    ->visible(fn($operation) => $operation === 'edit'),
                             ]),
                     ]),
             ]);

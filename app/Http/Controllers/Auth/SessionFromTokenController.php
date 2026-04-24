@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use App\Models\Session;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Laravel\Passport\Token;
@@ -80,6 +81,18 @@ class SessionFromTokenController extends Controller
                 ], 404);
             }
 
+            if ($user->status !== 'active') {
+                $reason = $user->status === 'suspended'
+                    ? 'Akun Anda telah ditangguhkan oleh administrator.'
+                    : 'Akun Anda sedang dinonaktifkan oleh administrator.';
+
+                \Log::warning('[SessionFromTokenController] Inactive user denied session creation | User ID: ' . $user->id . ' | Status: ' . $user->status);
+
+                return response()->json([
+                    'message' => $reason,
+                ], 403);
+            }
+
             // Authenticate user and login (sets Laravel session)
             \Log::debug('[SessionFromTokenController] Before login: auth()->id() = ' . (auth()->id() ?? 'NULL'));
             \Log::debug('[SessionFromTokenController] Session ID before: ' . session()->getId());
@@ -90,6 +103,8 @@ class SessionFromTokenController extends Controller
             }
 
             auth()->login($user);
+            session()->put('user_status', $user->status);
+            session()->put('user_id', $user->id);
 
             \Log::debug('[SessionFromTokenController] After login: auth()->id() = ' . (auth()->id() ?? 'NULL'));
             \Log::debug('[SessionFromTokenController] Session data after login: ' . json_encode(session()->all()));
@@ -102,7 +117,16 @@ class SessionFromTokenController extends Controller
             // Force session to be saved/persisted to storage
             session()->save();
 
-            \Log::debug('[SessionFromTokenController] After session()->save()');
+            if (session()->has('user_id') || auth()->check()) {
+                $sessionId = session()->getId();
+                $sessionModel = Session::find($sessionId);
+
+                if ($sessionModel) {
+                    $sessionModel->user_id = auth()->id();
+                    $sessionModel->is_active = true;
+                    $sessionModel->save();
+                }
+            }
 
             \Log::info('[SessionFromTokenController] User ' . $user->nip . ' authenticated from Passport token');
             \Log::debug('[SessionFromTokenController] Session ID: ' . session()->getId());
