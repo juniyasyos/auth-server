@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\JWTTokenService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class UnitKerjaPushService
 {
@@ -108,9 +109,21 @@ class UnitKerjaPushService
 
         $userIds = $relationsQuery->pluck('user_id')->unique()->toArray();
 
+        $selectColumns = ['id', 'nip', 'email', 'name', 'status', 'created_at', 'updated_at'];
+        if (Schema::hasColumn((new User())->getTable(), 'iam_id')) {
+            $selectColumns[] = 'iam_id';
+        } 
+
         $users = User::query()
             ->whereIn('id', $userIds)
-            ->get(['id', 'nip', 'email', 'name', 'status', 'iam_id', 'created_at', 'updated_at'])
+            ->get($selectColumns)
+            ->map(function (User $user) {
+                if (! isset($user->iam_id)) {
+                    $user->iam_id = $user->id;
+                }
+
+                return $user;
+            })
             ->toArray();
 
         $relations = $relationsQuery
