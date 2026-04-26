@@ -3,7 +3,10 @@
 namespace App\Filament\Panel\Resources\UnitKerjas\Pages;
 
 use App\Filament\Panel\Resources\UnitKerjas\UnitKerjaResource;
-use Filament\Actions;
+use App\Jobs\PushUnitKerjaToClient;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
 class ListUnitKerjas extends ListRecords
@@ -13,9 +16,23 @@ class ListUnitKerjas extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            CreateAction::make()
                 ->label('Tambah Data')
                 ->icon('heroicon-m-plus'),
+
+            Action::make('syncAllUnitKerja')
+                ->label('Sinkronisasi Semua Unit Kerja ke Client')
+                ->icon('heroicon-m-arrow-path')
+                ->color('success')
+                ->requiresConfirmation()
+                ->action(function (): void {
+                    PushUnitKerjaToClient::dispatch([], null);
+
+                    Notification::make()
+                        ->title('Sinkronisasi unit kerja dijadwalkan')
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 }
