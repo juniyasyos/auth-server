@@ -659,29 +659,23 @@ class ApplicationUserSyncService
      */
     protected function getIamUsers(Application $application, ?int $userId = null): array
     {
-        // WARNING: the inner queries below are *sensitive* to column
-        // qualification.  both `iam_roles` and the pivot `iam_user_application_roles`
-        // define an `application_id` column.  the previous implementation used a
-        // plain `$q2->where('application_id', $id)` which produced ambiguous SQL
-        // and caused a runtime exception in the logs.  do **not** revert this
-        // block to an unqualified condition.
         $userQuery = User::query();
 
         if ($userId !== null) {
             $userQuery->whereKey($userId);
-        } else {
-            // include users who either have a direct application role (for
-            // backwards compatibility) or who are connected to profiles that
-            // contain roles for this application.
-            $userQuery->where(function ($q) use ($application) {
-                $q->whereHas('applicationRoles', function ($q2) use ($application) {
-                    $q2->where('iam_roles.application_id', $application->id);
-                })
-                    ->orWhereHas('accessProfiles.roles', function ($q3) use ($application) {
-                        $q3->where('iam_roles.application_id', $application->id);
-                    });
-            });
         }
+
+        // include users who either have a direct application role (for
+        // backwards compatibility) or who are connected to profiles that
+        // contain roles for this application.
+        $userQuery->where(function ($q) use ($application) {
+            $q->whereHas('applicationRoles', function ($q2) use ($application) {
+                $q2->where('iam_roles.application_id', $application->id);
+            })
+                ->orWhereHas('accessProfiles.roles', function ($q3) use ($application) {
+                    $q3->where('iam_roles.application_id', $application->id);
+                });
+        });
 
         // OPTIMIZATION: Eager load all relationships to avoid N+1 queries
         $users = $userQuery
