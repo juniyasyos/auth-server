@@ -60,7 +60,7 @@ class ListUnitKerjas extends ListRecords
                         }
 
                         // Move to a predictable timestamped filename to avoid hashed names
-                        $timestampedName = sprintf('imports/import_unitkerja_' . config('app.url') . '_%s.json', now()->format('Ymd_His'));
+                        $timestampedName = sprintf('imports/import_unitkerja_%s.json', now()->format('Ymd_His'));
                         $disk->copy($fileName, $timestampedName);
                         $disk->delete($fileName);
 

@@ -80,7 +80,7 @@ class ListUsers extends ListRecords
                             return;
                         }
 
-                        $timestampedName = sprintf('imports/import_users_'. config('app.url').'_%s.json', now()->format('Ymd_His'));
+                        $timestampedName = sprintf('imports/import_users_%s.json', now()->format('Ymd_His'));
 
                         // Copy to a predictable filename and remove the original hashed upload name
                         $disk->copy($fileName, $timestampedName);
