@@ -11,20 +11,20 @@ class SettingRepository implements SettingRepositoryInterface
     public function all(): Collection
     {
         return Setting::query()
-            ->orderBy('group')
+            ->orderBy('category')
             ->orderBy('key')
             ->get();
     }
 
     public function grouped(?string $group = null): Collection
     {
-        $query = Setting::query()->orderBy('group')->orderBy('key');
+        $query = Setting::query()->orderBy('category')->orderBy('key');
 
         if ($group !== null) {
-            $query->where('group', $group);
+            $query->where('category', $group);
         }
 
-        return $query->get()->groupBy('group');
+        return $query->get()->groupBy('category');
     }
 
     public function findByKey(string $key): ?Setting
@@ -35,19 +35,12 @@ class SettingRepository implements SettingRepositoryInterface
     public function upsert(array $attributes): Setting
     {
         $key = (string) $attributes['key'];
+        $definition = config("settings.definitions.{$key}", []);
+        $type = (string) ($definition['type'] ?? $attributes['type'] ?? 'string');
 
         $payload = [
-            'group' => (string) ($attributes['group'] ?? 'general'),
-            'value' => $this->serializeValue($attributes['value'] ?? null, (string) ($attributes['type'] ?? 'string')),
-            'type' => (string) ($attributes['type'] ?? 'string'),
-            'description' => $attributes['description'] ?? null,
-            'input_type' => (string) ($attributes['input_type'] ?? 'text'),
-            'select_options' => $attributes['select_options'] ?? null,
-            'validation_rules' => $attributes['validation_rules'] ?? null,
-            'is_readonly' => (bool) ($attributes['is_readonly'] ?? false),
-            'is_sensitive' => (bool) ($attributes['is_sensitive'] ?? false),
-            'environment' => $attributes['environment'] ?? null,
-            'category' => $attributes['category'] ?? null,
+            'category' => (string) ($attributes['category'] ?? $attributes['group'] ?? 'general'),
+            'value' => $this->serializeValue($attributes['value'] ?? ($definition['default'] ?? null), $type),
         ];
 
         return Setting::updateOrCreate(['key' => $key], $payload);
@@ -68,9 +61,29 @@ class SettingRepository implements SettingRepositoryInterface
     {
         $count = 0;
 
-        foreach ($items as $item) {
-            if (! is_array($item) || empty($item['key'])) {
+        foreach ($items as $key => $item) {
+            if (! is_array($item)) {
                 continue;
+            }
+
+            if (empty($item['key'])) {
+                if (! is_string($key) && ! is_int($key)) {
+                    continue;
+                }
+
+                $item['key'] = (string) $key;
+            }
+
+            if ($item['key'] === '') {
+                continue;
+            }
+
+            if (! array_key_exists('value', $item)) {
+                $item['value'] = $item['default'] ?? null;
+            }
+
+            if (! isset($item['category']) && isset($item['group'])) {
+                $item['category'] = $item['group'];
             }
 
             $this->upsert($item);

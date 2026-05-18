@@ -2,7 +2,8 @@
 
 namespace App\Filament\Panel\Resources\Settings;
 
-use App\Filament\Panel\Resources\Settings\Pages\CreateSetting;
+use App\Filament\Panel\Resources\Settings\Pages\CompanySettings;
+use App\Filament\Panel\Resources\Settings\Pages\SettingsHome;
 use App\Filament\Panel\Resources\Settings\Pages\EditSetting;
 use App\Filament\Panel\Resources\Settings\Pages\ListSettings;
 use App\Filament\Panel\Resources\Settings\Schemas\SettingForm;
@@ -48,8 +49,9 @@ class SettingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListSettings::route('/'),
-            'create' => CreateSetting::route('/create'),
+            'index' => SettingsHome::route('/'),
+            'company' => CompanySettings::route('/company'),
+            'groups' => ListSettings::route('/groups'),
             'edit' => EditSetting::route('/{record}/edit'),
         ];
     }

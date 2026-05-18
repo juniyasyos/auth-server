@@ -3,9 +3,7 @@
 namespace App\Filament\Panel\Resources\Settings\Tables;
 
 use App\Models\Setting;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -16,12 +14,12 @@ class SettingsTable
     {
         return $table
             ->heading('Database Settings')
-            ->description('Kelola konfigurasi yang sudah dipindahkan dari file config ke database.')
-            ->defaultSort('group')
+            ->description('Kelola value setting yang sudah dikunci key dan category-nya.')
+            ->defaultSort('category')
             ->striped()
             ->persistFiltersInSession()
             ->persistSearchInSession()
-            ->searchPlaceholder('Cari key, group, atau deskripsi setting...')
+            ->searchPlaceholder('Cari key, category, atau value setting...')
             ->columns([
                 TextColumn::make('key')
                     ->label('Key')
@@ -29,36 +27,22 @@ class SettingsTable
                     ->sortable()
                     ->copyable()
                     ->weight('semibold')
-                    ->description(fn (Setting $record) => $record->description),
+                    ->description(fn (Setting $record) => self::descriptionFor($record)),
 
-                TextColumn::make('group')
-                    ->label('Group')
-                    ->badge()
-                    ->sortable(),
-
-                TextColumn::make('type')
-                    ->label('Type')
+                TextColumn::make('category')
+                    ->label('Category')
+                    ->getStateUsing(fn (Setting $record): string => $record->category ?: 'general')
                     ->badge()
                     ->sortable(),
 
                 TextColumn::make('value')
                     ->label('Value')
-                    ->getStateUsing(fn (Setting $record): string => $record->is_sensitive
+                    ->getStateUsing(fn (Setting $record): string => self::isSensitive($record)
                         ? '***masked***'
                         : self::previewValue($record))
                     ->wrap()
                     ->limit(60)
-                    ->tooltip(fn (Setting $record): ?string => $record->is_sensitive ? 'Sensitive value disembunyikan' : null),
-
-                IconColumn::make('is_readonly')
-                    ->label('Read Only')
-                    ->boolean()
-                    ->sortable(),
-
-                IconColumn::make('is_sensitive')
-                    ->label('Sensitive')
-                    ->boolean()
-                    ->sortable(),
+                    ->tooltip(fn (Setting $record): ?string => self::isSensitive($record) ? 'Sensitive value disembunyikan' : null),
 
                 TextColumn::make('updated_at')
                     ->label('Updated')
@@ -67,34 +51,36 @@ class SettingsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('group')
-                    ->label('Group')
+                SelectFilter::make('category')
+                    ->label('Category')
                     ->options(config('settings.groups', [])),
-
-                SelectFilter::make('type')
-                    ->label('Type')
-                    ->options([
-                        'string' => 'String',
-                        'integer' => 'Integer',
-                        'boolean' => 'Boolean',
-                        'array' => 'Array',
-                        'json' => 'JSON',
-                    ]),
             ])
             ->actions([
                 EditAction::make(),
             ])
             ->bulkActions([
-                DeleteBulkAction::make(),
+                // Delete is intentionally disabled. Settings are fixed records.
             ]);
     }
 
     private static function previewValue(Setting $record): string
     {
-        return match ($record->type) {
+        $type = config("settings.definitions.{$record->key}.type", 'string');
+
+        return match ($type) {
             'boolean' => $record->getValue() ? 'true' : 'false',
             'array', 'json' => json_encode($record->getValue(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '[]',
             default => (string) $record->getValue(),
         };
+    }
+
+    private static function descriptionFor(Setting $record): ?string
+    {
+        return config("settings.definitions.{$record->key}.description");
+    }
+
+    private static function isSensitive(Setting $record): bool
+    {
+        return (bool) config("settings.definitions.{$record->key}.is_sensitive", false);
     }
 }

@@ -5,7 +5,6 @@ namespace App\Filament\Panel\Resources\Settings\Pages;
 use App\Filament\Panel\Resources\Settings\SettingResource;
 use App\Services\SettingService;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -31,11 +30,6 @@ class ListSettings extends ListRecords
                         ->success()
                         ->send();
                 }),
-
-            CreateAction::make()
-                ->label('Add Setting')
-                ->icon('heroicon-m-plus')
-                ->color('primary'),
         ];
     }
 
@@ -44,17 +38,20 @@ class ListSettings extends ListRecords
         return [
             // 'all' => Tab::make('All'),
 
+            'company' => Tab::make('Company')
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('category', 'company')),
+
             'sso' => Tab::make('SSO')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('group', 'sso')),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('category', 'sso')),
 
             'iam' => Tab::make('IAM')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('group', 'iam')),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('category', 'iam')),
 
             'auth' => Tab::make('Auth')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('group', 'auth')),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('category', 'auth')),
 
             'fortify' => Tab::make('Fortify')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('group', 'fortify')),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('category', 'fortify')),
         ];
     }
 }

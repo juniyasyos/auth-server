@@ -12,29 +12,20 @@ class Setting extends Model
 
     protected $fillable = [
         'key',
-        'group',
-        'value',
-        'type',
-        'description',
-        'input_type',
-        'select_options',
-        'validation_rules',
-        'is_readonly',
-        'is_sensitive',
-        'environment',
         'category',
+        'value',
     ];
 
     protected $casts = [
-        'select_options' => 'array',
-        'validation_rules' => 'array',
-        'is_readonly' => 'boolean',
-        'is_sensitive' => 'boolean',
+        'value' => 'string',
     ];
 
     public function getValue(): mixed
     {
-        return match ($this->type) {
+        $definition = config("settings.definitions.{$this->key}", []);
+        $type = $definition['type'] ?? 'string';
+
+        return match ($type) {
             'integer' => (int) $this->value,
             'boolean' => filter_var($this->value, FILTER_VALIDATE_BOOLEAN),
             'array', 'json' => json_decode($this->value, true) ?? [],
@@ -50,7 +41,7 @@ class Setting extends Model
 
     public static function getByGroup(string $group): array
     {
-        return static::where('group', $group)
+        return static::where('category', $group)
             ->get()
             ->mapWithKeys(fn ($s) => [$s->key => $s->getValue()])
             ->toArray();

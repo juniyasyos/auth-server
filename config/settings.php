@@ -2,6 +2,7 @@
 
 return [
     'groups' => [
+        'company' => 'Company Identity',
         'sso' => 'SSO',
         'iam' => 'IAM',
         'auth' => 'Authentication',
@@ -9,6 +10,105 @@ return [
     ],
 
     'definitions' => [
+        'company.name' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => 'RS Citra Husada Sejahtera',
+            'description' => 'Nama resmi perusahaan / instansi',
+            'source' => 'company identity',
+        ],
+
+        'company.tagline' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => 'Melayani dengan Hati dan Profesionalisme',
+            'description' => 'Tagline atau slogan perusahaan',
+            'source' => 'company identity',
+        ],
+
+        'company.logo' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => '/images/company/logo.png',
+            'description' => 'URL logo perusahaan (digunakan untuk dokumen & UI)',
+            'source' => 'company identity',
+        ],
+
+        'company.address' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'textarea',
+            'default' => 'Jl. Raya Kesehatan No. 123, Kecamatan Sejahtera',
+            'description' => 'Alamat lengkap perusahaan',
+            'source' => 'company identity',
+        ],
+
+        'company.phone' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => '(0331) 123456',
+            'description' => 'Nomor telepon utama',
+            'source' => 'company identity',
+        ],
+
+        'company.email' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'email',
+            'default' => 'info@citrahusada.co.id',
+            'description' => 'Email resmi perusahaan',
+            'source' => 'company identity',
+        ],
+
+        'company.website' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'url',
+            'default' => 'https://citrahusada.co.id',
+            'description' => 'Website resmi perusahaan',
+            'source' => 'company identity',
+        ],
+
+        'company.city' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => 'Jember',
+            'description' => 'Kota lokasi perusahaan (untuk dokumen)',
+            'source' => 'company identity',
+        ],
+
+        'company.postal_code' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => '68121',
+            'description' => 'Kode pos perusahaan',
+            'source' => 'company identity',
+        ],
+
+        'company.director_name' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => 'dr. Andi Pratama, M.Kes',
+            'description' => 'Nama pimpinan / direktur (untuk tanda tangan dokumen)',
+            'source' => 'company identity',
+        ],
+
+        'company.director_title' => [
+            'group' => 'company',
+            'type' => 'string',
+            'input_type' => 'text',
+            'default' => 'Direktur Utama',
+            'description' => 'Jabatan pimpinan',
+            'source' => 'company identity',
+        ],
+
         'sso.issuer' => [
             'group' => 'sso',
             'type' => 'string',
