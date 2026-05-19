@@ -13,6 +13,7 @@ interface Props {
   showError: boolean;
   onCloseError: () => void;
   handleSubmit: (e: React.FormEvent) => void;
+  companyName?: string;
   isLoading: boolean;
   error?: string | null;
 }
@@ -98,7 +99,9 @@ export default function LoginDefaultView({
           <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 rounded-full mb-6 shadow-2xl animate-float">
             <Hospital className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-700 via-cyan-600 to-teal-600 bg-clip-text text-transparent mb-3 uppercase">RS Citra Husada</h1>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-700 via-cyan-600 to-teal-600 bg-clip-text text-transparent mb-3 uppercase">
+            {companyName ?? 'RS Citra Husada'}
+          </h1>
           <p className="text-slate-500 text-lg">Secure Integrated Hospital Management Platform</p>
           {import.meta.env.VITE_APP_ENV === 'dev' && (
             <div className="mt-2 px-3 py-1 bg-orange-100 border border-orange-300 rounded-full text-orange-800 text-sm font-medium text-center">Development Mode - Auto-filled credentials</div>

@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ListUnitKerjas extends ListRecords
@@ -30,10 +31,8 @@ class ListUnitKerjas extends ListRecords
                     \Filament\Forms\Components\FileUpload::make('json_file')
                         ->label('Upload File JSON')
                         ->acceptedFileTypes(['application/json'])
-                        ->maxSize(5120)
-                        ->disk('s3')
-                        ->directory('imports')
-                        ->visibility('private')
+                        ->maxSize(5120) // 5MB
+                        ->storeFiles(false)
                         ->required()
                         ->helperText('Format: JSON array berisi data unit kerja. Max 5MB.'),
 
@@ -42,30 +41,78 @@ class ListUnitKerjas extends ListRecords
                         ->default(true)
                         ->helperText('Jika aktif, import akan tetap berjalan meski ada data yang gagal.'),
                 ])
-                ->action(function (array $data): void {
+                ->action(function (array $data, ImportUnitKerjasFromJsonAction $importAction, Request $request): void {
                     try {
-                        $fileName = $data['json_file'];
+                        \Log::debug('=== Import JSON Unit Kerja Started ===');
+                        \Log::debug('Form data keys: ' . implode(', ', array_keys($data)));
 
-                        $disk = Storage::disk('s3');
+                        $jsonContent = null;
+                        $sourceFile = null;
 
-                        if (! $disk->exists($fileName)) {
+                        if (isset($data['json_file'])) {
+                            $fileData = $data['json_file'];
+
+                            if (is_object($fileData)) {
+                                \Log::debug('json_file is object: ' . get_class($fileData));
+
+                                if (method_exists($fileData, 'getRealPath')) {
+                                    $filePath = $fileData->getRealPath();
+                                    \Log::debug('Object has getRealPath, path: ' . $filePath);
+
+                                    if ($filePath && file_exists($filePath)) {
+                                        $jsonContent = file_get_contents($filePath);
+                                        $sourceFile = $filePath;
+                                        \Log::debug('Successfully read from getRealPath', ['size' => strlen($jsonContent)]);
+                                    }
+                                }
+
+                                if (!$jsonContent && method_exists($fileData, '__toString')) {
+                                    $filePath = (string) $fileData;
+                                    \Log::debug('Object has __toString, path: ' . $filePath);
+
+                                    if ($filePath && file_exists($filePath)) {
+                                        $jsonContent = file_get_contents($filePath);
+                                        $sourceFile = $filePath;
+                                        \Log::debug('Successfully read from __toString', ['size' => strlen($jsonContent)]);
+                                    }
+                                }
+                            } elseif (is_string($fileData)) {
+                                \Log::debug('json_file is string path: ' . $fileData);
+
+                                if (file_exists($fileData)) {
+                                    $jsonContent = file_get_contents($fileData);
+                                    $sourceFile = $fileData;
+                                    \Log::debug('Successfully read from string path', ['size' => strlen($jsonContent)]);
+                                } else {
+                                    $disk = Storage::disk();
+                                    if ($disk->exists($fileData)) {
+                                        $jsonContent = $disk->get($fileData);
+                                        $sourceFile = $fileData;
+                                        \Log::debug('Successfully read from disk', ['size' => strlen($jsonContent)]);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!$jsonContent) {
+                            \Log::error('Failed to read JSON content for unit kerja import', [
+                                'fileDataType' => isset($data['json_file']) ? gettype($data['json_file']) : 'not set',
+                                'fileDataClass' => isset($data['json_file']) && is_object($data['json_file']) ? get_class($data['json_file']) : 'N/A',
+                                'sourceFile' => $sourceFile,
+                            ]);
+
                             Notification::make()
-                                ->title('File tidak ditemukan di MinIO')
+                                ->title('Gagal membaca file JSON')
                                 ->danger()
                                 ->send();
 
                             return;
                         }
 
-                        // Move to a predictable timestamped filename to avoid hashed names
-                        $timestampedName = sprintf('imports/import_unitkerja_%s.json', now()->format('Ymd_His'));
-                        $disk->copy($fileName, $timestampedName);
-                        $disk->delete($fileName);
-
-                        $jsonContent = $disk->get($timestampedName);
                         $unitsData = json_decode($jsonContent, true);
 
                         if (! is_array($unitsData)) {
+                            \Log::error('Invalid JSON format for unit kerja import', ['jsonError' => json_last_error_msg()]);
                             Notification::make()
                                 ->title('Format JSON tidak valid')
                                 ->body('File harus berisi array JSON unit kerja.')
@@ -76,9 +123,7 @@ class ListUnitKerjas extends ListRecords
                         }
 
                         $skipErrors = (bool) ($data['skip_errors'] ?? true);
-                        $result = app(ImportUnitKerjasFromJsonAction::class)->execute($unitsData, $skipErrors);
-
-                        $disk->delete($timestampedName);
+                        $result = $importAction->execute($unitsData, $skipErrors);
 
                         Notification::make()
                             ->title('Import unit kerja selesai')
@@ -92,6 +137,14 @@ class ListUnitKerjas extends ListRecords
                             ->success()
                             ->send();
                     } catch (\Throwable $e) {
+                        \Log::error('Import unit kerja failed', [
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+
                         Notification::make()
                             ->title('Error saat import')
                             ->body($e->getMessage())

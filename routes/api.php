@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\SSOController;
 use App\Http\Controllers\Api\TtdUrlController;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 | routes/sso.php.
 |
 */
+
+// Public company info endpoint.
+Route::get('/company', [CompanyController::class, 'show']);
 
 // Protected user data route for TTD pre-signed URLs.
 Route::get('/users/{userId}/ttd-url', [TtdUrlController::class, 'show'])

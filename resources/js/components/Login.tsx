@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import LoginDefaultView from './Login/LoginDefaultView';
+
+interface CompanyData {
+  name?: string;
+}
 
 interface LoginProps {
   onLogin: (nip: string, password: string) => void;
@@ -17,6 +22,7 @@ export default function Login({ onLogin, isLoading = false, error, devAutofill =
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [companyName, setCompanyName] = useState<string>('');
 
   // Auto-fill untuk development mode
   useEffect(() => {
@@ -34,6 +40,27 @@ export default function Login({ onLogin, isLoading = false, error, devAutofill =
       setPassword(devPassword);
     }
   }, [devAutofill]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCompanyData = async () => {
+      try {
+        const response = await axios.get<CompanyData>('/api/company');
+        if (isMounted) {
+          setCompanyName(response.data.name ?? '');
+        }
+      } catch (err) {
+        console.warn('Unable to load company data', err);
+      }
+    };
+
+    loadCompanyData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (error) {
@@ -69,6 +96,7 @@ export default function Login({ onLogin, isLoading = false, error, devAutofill =
       handleSubmit={handleSubmit}
       isLoading={Boolean(isLoading)}
       error={error}
+      companyName={companyName}
     />
   );
 }
