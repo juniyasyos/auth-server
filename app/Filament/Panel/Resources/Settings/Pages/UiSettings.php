@@ -5,6 +5,7 @@ namespace App\Filament\Panel\Resources\Settings\Pages;
 use App\Filament\Panel\Resources\Settings\SettingResource;
 use App\Services\SettingService;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Filament\Schemas\Components\Fieldset;
@@ -38,20 +39,34 @@ class UiSettings extends Page
             ->components([
                 Section::make('UI Settings')
                     ->description('Manage UI login view selection. Only one variant can be active.')
-                    ->icon('heroicon-o-palette')
+                    ->icon('heroicon-o-computer-desktop')
                     ->schema([
-                        Fieldset::make('Login Page Variant')
-                            ->schema([
-                                Radio::make('login_view')
-                                    ->label('Login page variant')
-                                    ->options([
-                                        'default' => 'Default',
-                                        'type1' => 'Type 1',
-                                    ])
-                                    ->inline(false)
-                                    ->required(),
+                    ((function () {
+                        $imgClass = '\\Alkoumi\\FilamentImageRadioButton\\Forms\\Components\\ImageRadioGroup';
+
+                        if (class_exists($imgClass)) {
+                            return $imgClass::make('login_view')
+                                ->label('')
+                                ->disk('public')
+                                ->options([
+                                    'default' => 'images/login-page/default.jpeg',
+                                    'type1' => 'images/login-page/login-type-1.jpeg',
+                                    'type2' => 'images/login-page/login-type-2.jpeg',
+                                ])
+                                ->gridColumns(2)
+                                ->required();
+                        }
+
+                        return ToggleButtons::make('login_view')
+                            ->label('')
+                            ->options([
+                                'default' => 'Default',
+                                'type1' => 'Type 1',
+                                'type2' => 'Type 2',
                             ])
-                            ->columns(1),
+                            ->inline()
+                            ->required();
+                    })()),
                     ])
             ]);
     }

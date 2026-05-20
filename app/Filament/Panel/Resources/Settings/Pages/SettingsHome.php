@@ -27,6 +27,14 @@ class SettingsHome extends Page
                 'color' => '#0ea5e9',
                 'url' => SettingResource::getUrl('company'),
             ],
+            'ui' => [
+                'title' => 'UI Settings',
+                'description' => 'Kelola tampilan dan perilaku UI aplikasi.',
+                'badge' => 'UI',
+                'short' => 'UI',
+                'color' => '#8b5cf6',
+                'url' => SettingResource::getUrl('ui'),
+            ],
             'sso' => [
                 'title' => 'SSO',
                 'description' => 'Atur issuer, secret, TTL token, dan header verifikasi melalui halaman khusus.',

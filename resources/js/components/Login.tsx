@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import axios from 'axios';
 
 const LoginViewType1 = lazy(() => import('./Login/LoginViewType1'));
+const LoginViewType2 = lazy(() => import('./Login/LoginViewType2'));
 const LoginDefaultView = lazy(() => import('./Login/LoginDefaultView'));
 
 interface CompanyData {
@@ -120,11 +121,7 @@ export default function Login({ onLogin, isLoading = false, error, devAutofill =
 
   return (
     <Suspense fallback={null}>
-      {viewType === 'default' ? (
-        <LoginDefaultView {...commonProps} />
-      ) : (
-        <LoginViewType1 {...commonProps} />
-      )}
+      <LoginViewType2 {...commonProps} />
     </Suspense>
   );
 }

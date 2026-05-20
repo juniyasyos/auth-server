@@ -5,6 +5,8 @@ html {
 /* Base orchestrator untuk theme Filament v4 */
 @import './tokens.css';
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@source '../../../../vendor/alkoumi/filament-image-radio-button/resources/views/**/*.blade.php';
+
 
 /* Tailwind scan sources (biar utilitas ke-build) */
 @source '../../../../app/Filament/Panel/**/*';
